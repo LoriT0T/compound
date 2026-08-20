@@ -1,5 +1,5 @@
 /* Offline shell. Bump CACHE when assets change. */
-const CACHE = 'pushpull-v1';
+const CACHE = 'pushpull-v2';
 const ASSETS = [
   './',
   './index.html',

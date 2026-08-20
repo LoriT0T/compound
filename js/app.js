@@ -410,22 +410,7 @@ function wireDay(day, key) {
 
     if (cell.done) {
       if (navigator.vibrate) navigator.vibrate(18);
-      const isLastSet = si === plannedEx.sets.length - 1;
-      if (plannedEx.supersetInto) {
-        const nextName = LIB[plannedEx.supersetInto].name;
-        toast(`Straight into ${nextName}`);
-        const nextEl = app.querySelector(`.ex[data-i="${i + 1}"]`);
-        if (nextEl) {
-          app.querySelectorAll('.ex.open').forEach(o => o.classList.remove('open'));
-          nextEl.classList.add('open');
-          nextEl.scrollIntoView({ behavior:'smooth', block:'start' });
-        }
-      } else if (plannedEx.rest > 0) {
-        const nextLabel = isLastSet
-          ? (day.exercises[i + 1] ? 'Next: ' + LIB[day.exercises[i + 1].ex].name : 'Last set — you are done')
-          : `${LIB[exId].name} · set ${si + 2}`;
-        Rest.start(plannedEx.rest, nextLabel);
-      }
+      advanceAfterSet(day, i, si);
     }
   }));
 
@@ -446,6 +431,55 @@ function wireDay(day, key) {
   $('#reopen')?.addEventListener('click', () => {
     const s = S.getSession(key); s.finishedAt = null; S.saveSession(key, s); render();
   });
+}
+
+/* Where to go after ticking set `si` of exercise `i`.
+   Supersets alternate the way they do in the gym: A1 -> B1 -> rest -> A2 -> B2.
+   The first lift rests 0s and hands straight over; the partner carries the real
+   rest interval and sends you back for the next round. */
+function isSupersetPartner(day, i) {
+  return i > 0 && day.exercises[i - 1].supersetInto === day.exercises[i].ex;
+}
+
+function openExercise(i) {
+  const el = app.querySelector(`.ex[data-i="${i}"]`);
+  if (!el) return;
+  app.querySelectorAll('.ex.open').forEach(o => o.classList.remove('open'));
+  el.classList.add('open');
+  el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function advanceAfterSet(day, i, si) {
+  const ex = day.exercises[i];
+
+  /* A-half: straight into the partner, same set number, no rest. */
+  if (ex.supersetInto && day.exercises[i + 1]) {
+    toast(`Straight into ${LIB[ex.supersetInto].name}`);
+    openExercise(i + 1);
+    return;
+  }
+
+  /* B-half: take the rest, then head back to the partner for the next round. */
+  if (isSupersetPartner(day, i)) {
+    const partner = day.exercises[i - 1];
+    const more = si + 1 < partner.sets.length;
+    if (ex.rest > 0) {
+      Rest.start(ex.rest, more
+        ? `Back to ${LIB[partner.ex].name} · set ${si + 2}`
+        : (day.exercises[i + 1] ? 'Next: ' + LIB[day.exercises[i + 1].ex].name : 'Last set — you are done'));
+    }
+    openExercise(more ? i - 1 : i + 1);
+    return;
+  }
+
+  /* Ordinary lift. */
+  const isLastSet = si === ex.sets.length - 1;
+  if (ex.rest > 0) {
+    Rest.start(ex.rest, isLastSet
+      ? (day.exercises[i + 1] ? 'Next: ' + LIB[day.exercises[i + 1].ex].name : 'Last set — you are done')
+      : `${LIB[ex.ex].name} · set ${si + 2}`);
+  }
+  if (isLastSet && day.exercises[i + 1]) openExercise(i + 1);
 }
 
 function refreshDots(exEl, rows) {
