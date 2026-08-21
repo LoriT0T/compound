@@ -8,7 +8,7 @@
   --warn:#ffb020;
   --push:#ff4d2e; --pull:#3d8bff;
   /* health domains — one colour each, used in sections, dots and the log grid */
-  --sleep:#a78bfa; --move:#3d8bff; --fuel:#2ecc71; --test:#ffb020;
+  --sleep:#a78bfa; --move:#3d8bff; --fuel:#2ecc71; --test:#ffb020; --situ:#e879b9;
   --r:16px; --r-sm:11px;
   --pad:16px;
   --safe-b:env(safe-area-inset-bottom,0px);

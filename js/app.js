@@ -138,7 +138,7 @@ function hRow(date, i) {
   return `<div class="hrow ${on ? 'on' : ''}" data-hr="${i.id}" style="--k:${c}">
     <div class="hrow-h">
       <button class="htick" data-ht="${i.id}" aria-label="Log ${esc(i.name)}">${HTICK}</button>
-      <button class="hrow-b" data-hx="${i.id}"><b>${esc(i.name)}</b><span>${esc(i.brief)}</span></button>
+      <button class="hrow-b" data-hx="${i.id}"><b>${i.ico ? i.ico + ' ' : ''}${esc(i.name)}</b><span>${esc(i.brief)}</span></button>
       ${right}
       <button class="hexp" data-hx="${i.id}" aria-label="Details">›</button>
     </div>
@@ -211,9 +211,10 @@ function fuelRows(date) {
         <button data-p="reset" style="width:auto;padding:0 11px;font-size:12.5px;font-weight:700;margin-left:auto">Reset</button>
       </div>` : ''}</div>`;
     const on = item.counter ? f.protein >= item.goal : !!f[item.id];
+    const SHORT = { preworkout:'1 h before', gatorade:'During', creatine:'5 g' };
     const right = item.counter
       ? `<span class="htag">${f.protein}/${item.goal} g</span>`
-      : `<span class="htag">${esc(item.detail.split(',')[0])}</span>`;
+      : `<span class="htag">${esc(SHORT[item.id] || item.detail)}</span>`;
     return `<div class="hrow ${on ? 'on' : ''}" data-hr="fuel-${item.id}" style="--k:var(--fuel)">
       <div class="hrow-h">
         ${item.counter
@@ -237,7 +238,8 @@ function workoutSection(date) {
     return domSection(date, 'workout', `<div class="pad" style="display:flex;align-items:center;gap:13px">
       <div class="fuel-ico">😴</div>
       <div class="fuel-b"><b>Rest day</b><span>Growth happens now. Creatine, protein, sleep.</span></div>
-      <a class="btn sm ghost" style="width:auto;padding:9px 14px" href="#/split">Split</a></div>`, {n:0,t:0});
+      <a class="btn sm ghost" style="width:auto;padding:9px 14px" href="#/split">Split</a></div>
+    ${fuelRows(date)}`, workoutScore(date));
   }
   const key = S.sessionKey(day.id, date);
   const sess = S.getSessions()[key];
@@ -259,7 +261,18 @@ function workoutSection(date) {
       ${done ? `<div class="meta"><b style="color:var(--ok)">${done}/${total}</b><span>logged</span></div>` : ''}
     </div>
     <div style="margin-top:14px"><a class="btn ${isToday ? '' : 'ghost'}" href="#/day/${day.id}">${label}</a></div>
-  </div>`, { n: sess?.finishedAt ? 1 : 0, t: 1 });
+  </div>${fuelRows(date)}`, workoutScore(date));
+}
+
+/* Workout band counts the session plus the four training-fuel items. */
+function workoutScore(date) {
+  const dt = new Date(date + 'T00:00:00');
+  const slot = SCHEDULE[dt.getDay()];
+  const f = S.getFuel(date);
+  const fuelDone = ['creatine','preworkout','gatorade'].filter(k => f[k]).length + (f.protein >= 130 ? 1 : 0);
+  if (!slot.workout) return { n: fuelDone, t: FUEL.length };
+  const sess = S.getSessions()[S.sessionKey(slot.workout, date)];
+  return { n: fuelDone + (sess?.finishedAt ? 1 : 0), t: FUEL.length + 1 };
 }
 
 function viewHome() {
@@ -282,7 +295,8 @@ function viewHome() {
     ${sec('sleep')}
     ${sec('move')}
     ${workoutSection(date)}
-    ${domSection(date, 'fuel', fuelRows(date) + H.inDomain('fuel').map(i => hRow(date, i)).join(''))}
+    ${sec('fuel')}
+    ${sec('situ')}
     ${sec('test')}
 
     <div class="dom">
@@ -857,6 +871,17 @@ function viewReview() {
           <span class="chev">›</span>
         </a>
       </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>Considered and out</h2>
+        <span style="font-size:11.5px;color:var(--tx-3)">${H.OUT.length}</span></div>
+      <div class="card">${H.OUT.map((o, x) => `<div class="hrow" data-hr="out-${x}" style="--k:var(--warn)">
+        <div class="hrow-h">
+          <span class="htick" style="border:0;font-size:17px">${o.ico}</span>
+          <button class="hrow-b" data-hx="out-${x}"><b>${esc(o.n)}</b><span>${esc(o.v)}</span></button>
+          <button class="hexp" data-hx="out-${x}">›</button>
+        </div><div class="hrow-d" style="padding-top:12px">${o.s}</div></div>`).join('')}</div>
     </div>
 
     <div class="hnote"><b>How this works, so you can trust or distrust it.</b> These are transparent rules
