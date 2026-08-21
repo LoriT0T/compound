@@ -58,7 +58,7 @@ export const ITEMS = [
   brief:'15–20 min, after training',
   how:'15–20 minutes at whatever your gym\u2019s sauna runs at, ideally after lifting rather than before — heat before a session blunts performance. Rehydrate after.',
   why:'One of the very few recovery habits with <b>outcome</b> data rather than biomarker data. In the Kuopio cohort of Finnish men, 4–7 sessions a week was associated with roughly <b>40% lower all-cause mortality</b> and 63% lower sudden cardiac death versus once a week, with a clear dose–response.',
-  trap:'Observational — men who sauna frequently are healthier in ways that are hard to fully adjust for, so treat the size of the effect as uncertain even though the direction is well replicated. It is pleasant, cheap and low-risk, which is why it earns a place despite that.' },
+  trap:'Observational — men who sauna frequently are healthier in ways that are hard to fully adjust for, so treat the size of the effect as uncertain even though the direction is well replicated. It is pleasant, cheap and low-risk, which is why it earns a place despite that.<br><br><b>Do not follow it with a cold plunge on a lifting day.</b> Post-exercise cold water immersion attenuates satellite-cell activity and anabolic signalling for up to two days and measurably reduces long-term hypertrophy and strength gains (Roberts 2015; 2024 meta-analysis). Heat is fine. Cold within several hours of lifting costs you the adaptation you just trained for — put it on a rest day or skip it.' },
 
 { id:'bfr', dom:'move', cad:{t:'w',n:1}, ico:'🩹', name:'BFR set', tag:'Optional',
   brief:'Light load, cuffed — deloads and niggles',
