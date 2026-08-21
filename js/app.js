@@ -1,11 +1,14 @@
 import { LIB, buildSplit, SCHEDULE, FUEL, PRINCIPLES, BLOCK_WEEKS, CYCLE_LENGTH } from './data.js';
 import * as S from './store.js';
+import * as H from './health.js';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
 let split, plan, restTimer = null, sessionTick = null;
+/* Today view is split vertically by day; this is the column in focus. */
+let selDate = null;
 
 function loadSplit() {
   split = S.getSplit();
@@ -111,104 +114,216 @@ async function keepAwake(on) {
 }
 
 /* ---------------- views ---------------- */
-function viewHome() {
-  const todayIdx = new Date().getDay();
-  const slot = SCHEDULE[todayIdx];
-  const day = slot.workout ? dayById(slot.workout) : null;
-  const b = blockStats();
-  const sessions = S.getSessions();
 
-  const strip = SCHEDULE.map((sl, i) => {
-    const d = sl.workout ? dayById(sl.workout) : null;
-    /* find that weekday's date in the current week (week starts Monday) */
-    const now = new Date();
-    const diff = i - now.getDay();
-    const dt = new Date(now); dt.setDate(now.getDate() + diff);
-    const done = d && sessions[S.sessionKey(d.id, S.todayKey(dt))]?.finishedAt;
-    return `<div class="wd ${d ? d.kind : 'off'} ${i === todayIdx ? 'today' : ''}">
-      <div class="d">${sl.label}</div>
-      <div class="t">${d ? d.name.replace(' ', '') : 'Rest'}</div>
-      ${d ? `<i class="dot ${done ? '' : 'pending'}"></i>` : ''}
-    </div>`;
+/* ================= health components ================= */
+const HTICK = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.2l3 3 6-6.4" stroke="#0b0c0e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function hFields(date, i) {
+  if (!i.fields) return '';
+  const e = S.getHEntry(date, i.id), v = (e && e.v) || {};
+  return `<div class="hfields">${i.fields.map(f => `<div class="hf">
+    <label>${esc(f.l)}${f.u ? `<span class="u">${esc(f.u)}</span>` : ''}</label>
+    <input type="${f.t}" value="${v[f.k] != null ? esc(v[f.k]) : ''}" placeholder="—"
+      inputmode="${f.t === 'number' ? 'decimal' : 'text'}"
+      data-hf="${i.id}" data-hk="${f.k}"></div>`).join('')}</div>`;
+}
+
+/* One component row: minimal collapsed, full detail + fields on expand. */
+function hRow(date, i) {
+  const e = S.getHEntry(date, i.id), on = !!(e && e.done), c = H.DOMAINS[i.dom].c;
+  const right = i.cad.t === 'w'
+    ? `<span class="pips">${[...Array(i.cad.n)].map((_, x) =>
+        `<i class="${x < S.weekCount(date, i.id) ? 'pf' : ''}"></i>`).join('')}</span>`
+    : `<span class="htag">${esc(i.tag)}</span>`;
+  return `<div class="hrow ${on ? 'on' : ''}" data-hr="${i.id}" style="--k:${c}">
+    <div class="hrow-h">
+      <button class="htick" data-ht="${i.id}" aria-label="Log ${esc(i.name)}">${HTICK}</button>
+      <button class="hrow-b" data-hx="${i.id}"><b>${esc(i.name)}</b><span>${esc(i.brief)}</span></button>
+      ${right}
+      <button class="hexp" data-hx="${i.id}" aria-label="Details">›</button>
+    </div>
+    <div class="hrow-d">
+      ${i.how ? `<div class="lab">How</div><p>${i.how}</p>` : ''}
+      ${i.why ? `<div class="lab">Why it earns a place</div><p>${i.why}</p>` : ''}
+      ${i.trap ? `<div class="lab w">Watch out</div><p class="w">${i.trap}</p>` : ''}
+      ${hFields(date, i)}
+    </div></div>`;
+}
+
+/* A horizontal band for one domain. */
+function domSection(date, dom, inner, countOverride) {
+  const m = H.DOMAINS[dom];
+  const sc = countOverride || H.domainScore(date, dom);
+  return `<div class="dom">
+    <div class="dom-h"><span class="sw" style="background:${m.c}"></span>
+      <h2 style="color:${m.c}">${m.label}</h2>
+      <span class="cnt ${sc.n === sc.t && sc.t ? 'full' : ''}">${sc.n}/${sc.t}</span></div>
+    <div class="card">${inner}</div></div>`;
+}
+
+/* The vertical split: one column per day of the current week. */
+function dayStrip(date) {
+  const ws = S.weekStart(S.todayKey()), today = S.todayKey();
+  const doms = ['sleep','move','workout','fuel','test'];
+  return `<div class="dstrip">${[...Array(7)].map((_, i) => {
+    const dk = S.shiftDay(ws, i);
+    const dt = new Date(dk + 'T00:00:00');
+    const dots = doms.map(d => {
+      let hit;
+      if (d === 'workout') {
+        const sl = SCHEDULE[dt.getDay()];
+        hit = sl.workout && S.getSessions()[S.sessionKey(sl.workout, dk)]?.finishedAt;
+      } else hit = H.inDomain(d).some(it => S.getHEntry(dk, it.id)?.done);
+      return `<i style="${hit ? `background:${H.DOMAINS[d].c}` : ''}"></i>`;
+    }).join('');
+    return `<button class="dcol ${dk === date ? 'sel' : ''} ${dk > today ? 'fut' : ''}" data-day-sel="${dk}">
+      <div class="dl">${dt.toLocaleDateString(undefined,{weekday:'short'}).slice(0,3)}</div>
+      <div class="dn">${dt.getDate()}</div>
+      <div class="dots">${dots}</div></button>`;
+  }).join('')}</div>`;
+}
+
+/* PP fuel rows keep their own store; health detail is attached on expand. */
+const FUEL_DETAIL = {
+  preworkout:{ how:'Carbs and caffeine one hour before the session.',
+    why:'Gives the session something to run on and puts caffeine at peak effect during the working sets rather than at bedtime.' },
+  gatorade:{ how:'In hand from the first warm-up set to the last.',
+    why:'Fluid and sodium across a long session. Sipping beats drinking it all at once.' },
+  creatine:{ how:'5 g, any time of day, training or not.',
+    why:'The only drug-like compound in this app with vitamin-tier evidence. Loads muscle as phosphocreatine to regenerate ATP, and crosses into brain — verified by MRS. Cognitive benefit concentrates in the <b>sleep-deprived</b>, so it is worth more in exam season than on a good week.',
+    trap:'Micronised monohydrate only. Timing genuinely does not matter — it is a saturation model. Consistency is the whole game.' },
+  protein:{ how:'130 g target, logged across the day.',
+    why:'Roughly 1.6 g per kg is where meta-analyses converge for training adaptation. Below it, adaptation is limited no matter how well you train.',
+    trap:'More is not better — above ~2.2 g/kg there is no further benefit, just expensive food.' }
+};
+
+function fuelRows(date) {
+  const f = S.getFuel(date);
+  return FUEL.map(item => {
+    const d = FUEL_DETAIL[item.id] || {};
+    const detail = `<div class="hrow-d">
+      ${d.how ? `<div class="lab">How</div><p>${d.how}</p>` : ''}
+      ${d.why ? `<div class="lab">Why it earns a place</div><p>${d.why}</p>` : ''}
+      ${d.trap ? `<div class="lab w">Watch out</div><p class="w">${d.trap}</p>` : ''}
+      ${item.counter ? `<div class="pcount" style="margin-top:11px">
+        <button data-p="-25">−</button><b>${f.protein} g</b><button data-p="25">+</button>
+        <button data-p="10" style="width:auto;padding:0 11px;font-size:12.5px;font-weight:700">+10</button>
+        <button data-p="reset" style="width:auto;padding:0 11px;font-size:12.5px;font-weight:700;margin-left:auto">Reset</button>
+      </div>` : ''}</div>`;
+    const on = item.counter ? f.protein >= item.goal : !!f[item.id];
+    const right = item.counter
+      ? `<span class="htag">${f.protein}/${item.goal} g</span>`
+      : `<span class="htag">${esc(item.detail.split(',')[0])}</span>`;
+    return `<div class="hrow ${on ? 'on' : ''}" data-hr="fuel-${item.id}" style="--k:var(--fuel)">
+      <div class="hrow-h">
+        ${item.counter
+          ? `<span class="htick" style="border-color:${on ? 'var(--fuel)' : ''};background:${on ? 'var(--fuel)' : ''}">${HTICK}</span>`
+          : `<button class="htick" data-fuel="${item.id}" aria-label="Log ${esc(item.label)}">${HTICK}</button>`}
+        <button class="hrow-b" data-hx="fuel-${item.id}"><b>${item.icon} ${esc(item.label)}</b>
+          <span>${esc(item.detail)}</span></button>
+        ${right}
+        <button class="hexp" data-hx="fuel-${item.id}">›</button>
+      </div>${detail}</div>`;
   }).join('');
+}
 
-  const key = day ? S.sessionKey(day.id) : null;
-  const sess = key ? sessions[key] : null;
-  const doneCount = sess ? Object.values(sess.sets).flat().filter(s => s.done).length : 0;
-  const totalSets = day ? day.exercises.reduce((n, e) => n + e.sets.length, 0) : 0;
-
-  const weekdayName = new Date().toLocaleDateString(undefined, { weekday:'long' });
-  const hero = day ? `
-    <div class="hero ${day.kind}">
-      <div class="hero-in">
-        <div class="kicker">Today · ${weekdayName}</div>
-        <h2>${day.name}</h2>
-        <p class="focus">${esc(day.focus)}</p>
-        <div class="meta-row">
-          <div class="meta"><b>${day.exercises.length}</b><span>exercises</span></div>
-          <div class="meta"><b>${totalSets}</b><span>sets</span></div>
-          <div class="meta"><b>~${day.mins}</b><span>minutes</span></div>
-          ${doneCount ? `<div class="meta"><b style="color:var(--ok)">${doneCount}/${totalSets}</b><span>logged</span></div>` : ''}
-        </div>
-        <div style="margin-top:16px">
-          <a class="btn" href="#/day/${day.id}">${sess?.finishedAt ? 'Review session' : doneCount ? 'Continue session' : 'Start session'}</a>
-        </div>
+/* Workout band — reads real sessions, so lifting has one source of truth. */
+function workoutSection(date) {
+  const dt = new Date(date + 'T00:00:00');
+  const slot = SCHEDULE[dt.getDay()];
+  const day = slot.workout ? dayById(slot.workout) : null;
+  const isToday = date === S.todayKey();
+  if (!day) {
+    return domSection(date, 'workout', `<div class="pad" style="display:flex;align-items:center;gap:13px">
+      <div class="fuel-ico">😴</div>
+      <div class="fuel-b"><b>Rest day</b><span>Growth happens now. Creatine, protein, sleep.</span></div>
+      <a class="btn sm ghost" style="width:auto;padding:9px 14px" href="#/split">Split</a></div>`, {n:0,t:0});
+  }
+  const key = S.sessionKey(day.id, date);
+  const sess = S.getSessions()[key];
+  const total = day.exercises.reduce((n, e) => n + e.sets.length, 0);
+  const done = sess ? Object.values(sess.sets).flat().filter(x => x.done).length : 0;
+  const label = sess?.finishedAt ? 'Review session' : done ? 'Continue session' : 'Start session';
+  return domSection(date, 'workout', `<div class="pad">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1;min-width:0">
+        <b style="font-size:16px">${esc(day.name)}</b>
+        <p style="font-size:12.5px;color:var(--tx-2);margin-top:3px;line-height:1.45">${esc(day.focus)}</p>
       </div>
-    </div>` : `
-    <div class="hero rest">
-      <div class="hero-in">
-        <div class="kicker">Today · ${weekdayName}</div>
-        <h2>Rest</h2>
-        <p class="focus">Growth happens now, not in the gym. Creatine, protein, sleep.</p>
-        <div style="margin-top:16px">
-          <a class="btn ghost" href="#/split">See the split</a>
-        </div>
-      </div>
-    </div>`;
+      <span class="badge ${day.kind}" style="flex:none">${day.kind.toUpperCase()}</span>
+    </div>
+    <div class="meta-row" style="margin-top:12px">
+      <div class="meta"><b>${day.exercises.length}</b><span>exercises</span></div>
+      <div class="meta"><b>${total}</b><span>sets</span></div>
+      <div class="meta"><b>~${day.mins}</b><span>minutes</span></div>
+      ${done ? `<div class="meta"><b style="color:var(--ok)">${done}/${total}</b><span>logged</span></div>` : ''}
+    </div>
+    <div style="margin-top:14px"><a class="btn ${isToday ? '' : 'ghost'}" href="#/day/${day.id}">${label}</a></div>
+  </div>`, { n: sess?.finishedAt ? 1 : 0, t: 1 });
+}
 
-  const nextUp = (() => {
-    for (let i = 1; i <= 7; i++) {
-      const s = SCHEDULE[(todayIdx + i) % 7];
-      if (s.workout) return { label: s.label, day: dayById(s.workout), inDays: i };
-    }
-  })();
+function viewHome() {
+  const date = selDate || S.todayKey();
+  const dt = new Date(date + 'T00:00:00');
+  const isToday = date === S.todayKey();
+  const b = blockStats();
 
-  const fuel = S.getFuel();
-  const fuelDone = ['creatine','preworkout','gatorade'].filter(k => fuel[k]).length + (fuel.protein >= 130 ? 1 : 0);
+  const sec = (dom) => domSection(date, dom,
+    H.inDomain(dom).map(i => hRow(date, i)).join(''));
 
   app.innerHTML = `<div class="view">
-    <div class="top">
-      <div>
-        <h1>${greeting()}</h1>
-        <div class="sub">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}</div>
-      </div>
-    </div>
-    ${hero}
+    <div class="top"><div>
+      <h1>${isToday ? greeting() : dt.toLocaleDateString(undefined,{weekday:'long'})}</h1>
+      <div class="sub">${dt.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}${isToday ? '' : ' · editing a past day'}</div>
+    </div></div>
 
-    <div class="sect">
-      <div class="sect-h"><h2>This week</h2><a class="link" href="#/split">Full split →</a></div>
-      <div class="week">${strip}</div>
-      ${!day ? `<p style="font-size:12.5px;color:var(--tx-3);margin-top:10px;text-align:center">
-        Next: <b style="color:var(--tx-2)">${nextUp.day.name}</b> in ${nextUp.inDays} day${nextUp.inDays>1?'s':''}</p>` : ''}
-    </div>
+    ${dayStrip(date)}
 
-    <div class="sect">
-      <div class="sect-h"><h2>Fuel today</h2><a class="link" href="#/fuel">Track →</a></div>
-      <div class="card pad" style="display:flex;align-items:center;gap:14px">
-        <div style="flex:1">
-          <b style="font-size:15px">${fuelDone}/4 daily targets</b>
-          <div class="bar"><i class="${fuel.protein>=130?'full':''}" style="width:${Math.min(100,(fuel.protein/130)*100)}%"></i></div>
-          <div style="font-size:12px;color:var(--tx-3);margin-top:6px">${fuel.protein} g of 130 g protein</div>
-        </div>
-        <a class="btn sm ghost" style="width:auto;padding:11px 15px" href="#/fuel">Log</a>
-      </div>
-    </div>
+    ${sec('sleep')}
+    ${sec('move')}
+    ${workoutSection(date)}
+    ${domSection(date, 'fuel', fuelRows(date) + H.inDomain('fuel').map(i => hRow(date, i)).join(''))}
+    ${sec('test')}
 
-    <div class="sect">
-      <div class="sect-h"><h2>Current block</h2></div>
+    <div class="dom">
+      <div class="dom-h"><span class="sw" style="background:var(--acc)"></span>
+        <h2 style="color:var(--acc)">Current block</h2>
+        <a class="link" href="#/split">Full split →</a></div>
       ${blockCard(b)}
     </div>
+
+    <div class="hnote amber"><b>Before any blood test:</b> stop the multivitamin 72 hours ahead.
+      Its 300µg of biotin skews immunoassays — TSH reads falsely low, free T4 falsely high.</div>
+    <div style="height:14px"></div>
   </div>`;
+  wireHealth(date);
+}
+
+/* Shared wiring for every view that renders health rows. */
+function wireHealth(date) {
+  app.querySelectorAll('[data-day-sel]').forEach(el => el.addEventListener('click', () => {
+    selDate = el.dataset.daySel; render();
+  }));
+  app.querySelectorAll('[data-ht]').forEach(el => el.addEventListener('click', () => {
+    S.toggleH(date, el.dataset.ht); render();
+  }));
+  app.querySelectorAll('[data-hx]').forEach(el => el.addEventListener('click', () => {
+    app.querySelector(`.hrow[data-hr="${el.dataset.hx}"]`)?.classList.toggle('open');
+  }));
+  app.querySelectorAll('[data-hf]').forEach(el => el.addEventListener('change', () => {
+    S.setHField(date, el.dataset.hf, el.dataset.hk, el.value);
+  }));
+  app.querySelectorAll('[data-fuel]').forEach(el => el.addEventListener('click', () => {
+    const id = el.dataset.fuel; S.setFuel({ [id]: !S.getFuel(date)[id] }, date); render();
+  }));
+  app.querySelectorAll('[data-p]').forEach(el => el.addEventListener('click', () => {
+    const v = el.dataset.p, f = S.getFuel(date);
+    S.setFuel({ protein: v === 'reset' ? 0 : Math.max(0, f.protein + Number(v)) }, date);
+    render();
+  }));
+  app.querySelectorAll('[data-oura]').forEach(el => el.addEventListener('change', () => {
+    S.setOura(S.weekStart(S.todayKey()), el.dataset.oura, el.value);
+  }));
 }
 
 function greeting() {
@@ -606,6 +721,159 @@ function confirmRotate() {
 }
 
 /* ---------------- log / history ---------------- */
+
+/* ---- health blocks that live inside the merged Log ---- */
+function healthLogBlocks() {
+  const today = S.todayKey(), WK = 8;
+  const doms = ['sleep','move','workout','fuel'];
+  const start = S.weekStart(S.shiftDay(today, -7 * (WK - 1)));
+
+  let grid = '<div class="hgrid"><span class="wl"></span>' +
+    ['M','T','W','T','F','S','S'].map(d => `<span class="hl">${d}</span>`).join('');
+  for (let w = 0; w < WK; w++) {
+    const ws = S.shiftDay(start, w * 7);
+    grid += `<span class="wl">${ws.slice(5).replace('-','/')}</span>`;
+    for (let d = 0; d < 7; d++) {
+      const dk = S.shiftDay(ws, d);
+      const cells = doms.map(dm => {
+        let hit;
+        if (dm === 'workout') {
+          const sl = SCHEDULE[new Date(dk + 'T00:00:00').getDay()];
+          hit = sl.workout && S.getSessions()[S.sessionKey(sl.workout, dk)]?.finishedAt;
+        } else hit = H.inDomain(dm).some(i => S.getHEntry(dk, i.id)?.done);
+        return `<i class="${hit ? 'on' : ''}" style="--c:${H.DOMAINS[dm].c}"></i>`;
+      }).join('');
+      grid += `<span class="hcell ${dk > today ? 'fut' : ''} ${dk === today ? 'tdy' : ''}" title="${dk}">${cells}</span>`;
+    }
+  }
+  grid += '</div>';
+
+  const adh = H.live().map(i => {
+    const days = i.cad.t === 'd' ? 28 : 56;
+    const hits = S.doneInLast(today, i.id, days);
+    const target = i.cad.t === 'd' ? days
+      : i.cad.t === 'w' ? Math.round(days / 7 * i.cad.n)
+      : i.cad.t === 'f' ? Math.round(days / 14)
+      : i.cad.t === 'm' ? Math.round(days / 30) : 1;
+    return { i, pc: target ? Math.min(100, Math.round(hits / target * 100)) : 0 };
+  }).sort((a, b) => a.pc - b.pc);
+
+  const week = S.fuelRange(7);
+  const streak = `<div class="streak">${week.map(d => {
+    const hits = ['creatine','preworkout','gatorade'].filter(k => d[k]).length + (d.protein >= 130 ? 1 : 0);
+    return `<div><div class="sq ${hits === 4 ? 'hit' : hits > 0 ? 'part' : ''}">${hits || ''}</div>
+      <div class="lb">${new Date(d.date+'T00:00:00').toLocaleDateString(undefined,{weekday:'narrow'})}</div></div>`;
+  }).join('')}</div>`;
+
+  return `
+    <div class="sect">
+      <div class="sect-h"><h2>Schedule</h2><span style="font-size:11.5px;color:var(--tx-3)">8 weeks</span></div>
+      <div class="card pad">
+        <div class="hlegend" style="margin-bottom:12px">${doms.map(d =>
+          `<span><i style="background:${H.DOMAINS[d].c}"></i>${H.DOMAINS[d].label}</span>`).join('')}</div>
+        ${grid}
+        <p style="font-size:11.5px;color:var(--tx-3);margin-top:11px;line-height:1.5">
+          Each square is a day, quartered by domain. A dark quarter is a gap — a column of dark
+          purple means sleep is where you are losing, not supplements.</p>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>Fuel · last 7 days</h2></div>
+      <div class="card">${streak}</div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>Adherence — weakest first</h2></div>
+      <div class="card">${adh.map(({ i, pc }) => `<div class="adh" style="--k:${H.DOMAINS[i.dom].c}">
+        <span style="width:7px;height:7px;border-radius:2px;background:${H.DOMAINS[i.dom].c};flex:none"></span>
+        <span class="nm">${esc(i.name)}</span>
+        <span class="trk"><i style="width:${pc}%"></i></span>
+        <span class="pc">${pc}%</span></div>`).join('')}</div>
+    </div>`;
+}
+
+/* ---------------- review: fortnightly, wearable in → changes out ---------------- */
+function viewReview() {
+  const today = S.todayKey(), wk = S.weekStart(today);
+  const o = S.getOura()[wk] || {};
+  const cur = H.block(today, 0), prev = H.block(today, 1);
+  const sum = b => Object.values(b).reduce((a, c) => a + c, 0);
+  const F = [{k:'score',l:'Sleep score',u:'/100'},{k:'hrv',l:'Avg HRV',u:'ms'},
+             {k:'rhr',l:'Resting HR',u:'bpm'},{k:'hrs',l:'Time asleep',u:'h'}];
+
+  app.innerHTML = `<div class="view">
+    <div class="top"><div><h1>Review</h1><div class="sub">Fortnightly — data in, changes out</div></div></div>
+
+    <div class="card pad">
+      <div style="font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-3);
+        font-weight:700;margin-bottom:8px">Ring numbers · week of ${wk}</div>
+      <div class="hfields">${F.map(f => `<div class="hf" style="--k:var(--sleep)">
+        <label>${f.l}<span class="u">${f.u}</span></label>
+        <input type="number" inputmode="decimal" placeholder="—"
+          value="${o[f.k] != null ? esc(o[f.k]) : ''}" data-oura="${f.k}"></div>`).join('')}</div>
+      <p style="font-size:11.5px;color:var(--tx-3);margin-top:10px;line-height:1.5">
+        Enter these from the Oura app once a fortnight.
+        <b style="color:var(--tx-2)">In the native iOS build this becomes automatic</b> — Oura writes to
+        HealthKit, so the app reads sleep, HRV and resting HR without you typing anything. A web page
+        cannot call the Oura API, so manual entry is the honest interim.</p>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>This block vs last</h2>
+        <span style="font-size:11.5px;color:var(--tx-3)">${sum(cur)} vs ${sum(prev)}</span></div>
+      <div class="card">${H.live().filter(i => cur[i.id] || prev[i.id]).map(i => {
+        const d = cur[i.id] - prev[i.id];
+        return `<div class="adh" style="--k:${H.DOMAINS[i.dom].c}">
+          <span style="width:7px;height:7px;border-radius:2px;background:${H.DOMAINS[i.dom].c};flex:none"></span>
+          <span class="nm">${esc(i.name)}</span>
+          <span class="pc" style="width:auto;color:${d > 0 ? 'var(--ok)' : d < 0 ? 'var(--warn)' : 'var(--tx-3)'}">${d > 0 ? '+' : ''}${d}</span>
+          <span class="pc">${cur[i.id]}</span></div>`;
+      }).join('') || '<div class="pad" style="color:var(--tx-3);font-size:13px">Nothing logged yet.</div>'}</div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>What to change</h2></div>
+      <div class="card">${H.recommend(today).map(r => `<div class="rec" style="--k:${H.DOMAINS[r.d].c}">
+        <span class="bar"></span><span><b>${esc(r.t)}</b><p>${r.p}</p></span></div>`).join('')}</div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h"><h2>Settings</h2></div>
+      <div class="card">
+        <div class="fuel-row">
+          <div class="fuel-ico">⚖️</div>
+          <div class="fuel-b"><b>Units</b><span>Weights are logged in ${unit()}</span></div>
+          <button class="btn sm ghost" style="width:auto;padding:9px 15px" id="unitToggle">${unit()}</button>
+        </div>
+        <div class="fuel-row">
+          <div class="fuel-ico">🔔</div>
+          <div class="fuel-b"><b>Rest timer alert</b><span>Beep and vibrate when rest ends</span></div>
+          <button class="check ${S.getPrefs().sound ? 'on' : ''}" id="soundToggle">✓</button>
+        </div>
+        <a class="fuel-row" href="#/fuel" style="text-decoration:none">
+          <div class="fuel-ico">🥩</div>
+          <div class="fuel-b"><b>Fuel page</b><span>Original protocol, streak and counters</span></div>
+          <span class="chev">›</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="hnote"><b>How this works, so you can trust or distrust it.</b> These are transparent rules
+      over your own adherence and ring numbers — not a model. Each one names the counts it fired on.
+      Change <b>one</b> variable per fortnight or the next block cannot attribute anything.</div>
+    <div style="height:20px"></div>
+  </div>`;
+
+  wireHealth(today);
+  $('#unitToggle').addEventListener('click', () => {
+    S.setPrefs({ unit: unit() === 'kg' ? 'lb' : 'kg' }); render();
+  });
+  $('#soundToggle').addEventListener('click', () => {
+    S.setPrefs({ sound: !S.getPrefs().sound }); render();
+  });
+}
+
 function viewLog() {
   const sessions = S.getSessions();
   const keys = Object.keys(sessions).filter(k => sessions[k].finishedAt).sort().reverse();
@@ -653,6 +921,8 @@ function viewLog() {
         ? `<div class="card">${list}</div>`
         : `<div class="card empty"><div class="big">📓</div><p>No finished sessions yet.<br>Log your first workout and it lands here.</p></div>`}
     </div>
+
+    ${healthLogBlocks()}
 
     <div class="sect">
       <div class="sect-h"><h2>Data</h2></div>
@@ -891,7 +1161,8 @@ const ROUTES = [
   { re: /^#\/day\/(\w+)$/,  view: m => viewDay(m[1]), nav: 'home' },
   { re: /^#\/split$/,       view: viewSplit, nav: 'split' },
   { re: /^#\/log$/,         view: viewLog,   nav: 'log' },
-  { re: /^#\/fuel$/,        view: viewFuel,  nav: 'fuel' }
+  { re: /^#\/fuel$/,        view: viewFuel,  nav: 'review' },
+  { re: /^#\/review$/,      view: viewReview, nav: 'review' }
 ];
 
 function render() {

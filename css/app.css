@@ -7,6 +7,8 @@
   --ok:#2ecc71; --ok-soft:rgba(46,204,113,.14);
   --warn:#ffb020;
   --push:#ff4d2e; --pull:#3d8bff;
+  /* health domains — one colour each, used in sections, dots and the log grid */
+  --sleep:#a78bfa; --move:#3d8bff; --fuel:#2ecc71; --test:#ffb020;
   --r:16px; --r-sm:11px;
   --pad:16px;
   --safe-b:env(safe-area-inset-bottom,0px);
@@ -271,3 +273,113 @@ select.picker{width:100%;padding:13px;border-radius:12px;background:var(--card-2
   box-shadow:0 10px 30px rgba(0,0,0,.5);white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%)}
 .hidden{display:none!important}
+
+/* ==============================================================
+   HEALTH — day strip, domain sections, component rows, review
+   Additive: nothing above this line was changed except the tokens.
+   ============================================================== */
+
+/* ---- vertical split by day: the week selector ---- */
+.dstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:2px}
+.dcol{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:8px 3px 7px;text-align:center;transition:border-color .15s,background .15s}
+.dcol.sel{border-color:var(--acc);background:var(--card-2)}
+.dcol.fut{opacity:.4}
+.dcol .dl{font-size:10px;font-weight:700;color:var(--tx-3);text-transform:uppercase;letter-spacing:.5px}
+.dcol.sel .dl{color:var(--acc)}
+.dcol .dn{font-size:14px;font-weight:800;margin-top:1px;font-variant-numeric:tabular-nums}
+.dcol .dots{display:flex;justify-content:center;gap:2px;margin-top:5px;height:5px}
+.dcol .dots i{width:5px;height:5px;border-radius:50%;background:var(--line-2);font-style:normal}
+
+/* ---- horizontal domain section ---- */
+.dom{margin-top:20px}
+.dom-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:0 2px}
+.dom-h .sw{width:9px;height:9px;border-radius:3px;flex:none}
+.dom-h h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;font-weight:700;flex:1}
+.dom-h .cnt{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:11.5px;color:var(--tx-3);
+  font-variant-numeric:tabular-nums}
+.dom-h .cnt.full{color:var(--ok)}
+
+/* ---- component row: minimal collapsed, detail on expand ---- */
+.hrow{border-bottom:1px solid var(--line)}
+.hrow:last-child{border-bottom:0}
+.hrow-h{display:flex;align-items:center;gap:11px;padding:11px 14px;width:100%;text-align:left}
+.hrow-h:active{background:var(--card-2)}
+.htick{width:25px;height:25px;border-radius:9px;border:2px solid var(--line-2);flex:none;
+  display:flex;align-items:center;justify-content:center;background:transparent;transition:all .15s}
+.htick svg{opacity:0;transition:opacity .12s}
+.hrow.on .htick{background:var(--k);border-color:var(--k)}
+.hrow.on .htick svg{opacity:1}
+.hrow-b{flex:1;min-width:0;text-align:left}
+.hrow-b b{display:block;font-size:14.5px;font-weight:650;transition:opacity .15s}
+.hrow.on .hrow-b b{opacity:.5;text-decoration:line-through;text-decoration-color:var(--tx-3)}
+.hrow-b span{display:block;font-size:12px;color:var(--tx-3);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.htag{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:11px;color:var(--tx-2);flex:none;
+  background:var(--card-2);padding:4px 8px;border-radius:7px;border:1px solid var(--line)}
+.hexp{width:26px;flex:none;color:var(--tx-3);font-size:17px;text-align:center;transition:transform .2s}
+.hrow.open .hexp{transform:rotate(90deg)}
+.hrow-d{display:none;padding:2px 14px 14px;border-top:1px solid var(--line);background:var(--bg-2)}
+.hrow.open .hrow-d{display:block}
+.hrow-d .lab{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:9.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--tx-3);font-weight:700;margin:11px 0 4px}
+.hrow-d p{font-size:13px;color:var(--tx-2);line-height:1.55}
+.hrow-d p b{color:var(--tx);font-weight:650}
+.hrow-d .lab.w{color:#ffc76b}
+.hrow-d p.w{color:#ffc76b}
+
+/* weekly progress pips — .pf, deliberately not .f (that is the field wrapper) */
+.pips{display:flex;gap:3px;flex:none}
+.pips i{width:6px;height:14px;border-radius:2px;background:var(--line-2);font-style:normal}
+.pips i.pf{background:var(--k)}
+
+/* ---- tracking fields ---- */
+.hfields{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hf{flex:1;min-width:104px}
+.hf label{display:block;font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:9.5px;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--tx-3);font-weight:700;margin-bottom:4px}
+.hf input{width:100%;background:var(--card);border:1px solid var(--line-2);border-radius:9px;
+  padding:9px 10px;font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:13.5px;
+  color:var(--tx);font-variant-numeric:tabular-nums;-webkit-appearance:none}
+.hf input:focus{border-color:var(--k);outline:none}
+.hf .u{font-size:10px;color:var(--tx-3);margin-left:4px}
+
+/* ---- log: colour-coded schedule ---- */
+.hgrid{display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;align-items:center}
+.hgrid .wl{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:9.5px;color:var(--tx-3);
+  padding-right:4px;text-align:right}
+.hgrid .hl{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:9.5px;color:var(--tx-3);
+  text-align:center;padding-bottom:2px}
+.hcell{aspect-ratio:1;border-radius:5px;background:var(--card-2);border:1px solid var(--line);
+  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;padding:2px}
+.hcell.fut{opacity:.28}
+.hcell.tdy{border-color:var(--acc)}
+.hcell i{border-radius:1.5px;background:var(--line-2);font-style:normal}
+.hcell i.on{background:var(--c)}
+.hlegend{display:flex;gap:11px;flex-wrap:wrap}
+.hlegend span{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--tx-3);
+  text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+.hlegend i{width:7px;height:7px;border-radius:2px;font-style:normal}
+
+/* ---- adherence bars ---- */
+.adh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.adh:last-child{border-bottom:0}
+.adh .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adh .trk{width:84px;height:6px;border-radius:3px;background:var(--line-2);overflow:hidden;flex:none}
+.adh .trk i{display:block;height:100%;background:var(--k);font-style:normal}
+.adh .pc{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:12px;color:var(--tx-2);
+  width:38px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+
+/* ---- review ---- */
+.rec{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.rec:last-child{border-bottom:0}
+.rec .bar{width:3px;border-radius:2px;background:var(--k);flex:none}
+.rec b{display:block;font-size:13.5px;font-weight:650;margin-bottom:2px}
+.rec p{font-size:12.5px;color:var(--tx-2);line-height:1.5}
+.hnote{background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:12px 14px;font-size:12.5px;color:var(--tx-2);line-height:1.55;margin-top:12px}
+.hnote b{color:var(--tx)}
+.hnote.amber{background:rgba(255,176,32,.09);border-color:rgba(255,176,32,.28)}
+.hnote.amber b{color:var(--warn)}
+.nav-in.five{grid-template-columns:repeat(5,1fr)}

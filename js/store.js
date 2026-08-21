@@ -8,7 +8,10 @@ const K = {
   fuel:     'pp:v1:fuel',
   photos:   'pp:v1:photos',
   prefs:    'pp:v1:prefs',
-  history:  'pp:v1:blocks'
+  history:  'pp:v1:blocks',
+  hlog:     'pp:v1:hlog',      /* health: per-day component log   */
+  hoff:     'pp:v1:hoff',      /* health: components opted out of */
+  oura:     'pp:v1:oura'       /* health: fortnightly ring numbers */
 };
 
 const read  = (k, fallback) => {
@@ -20,6 +23,18 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 export const todayKey = (d = new Date()) => {
   const t = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return t.toISOString().slice(0, 10);
+};
+
+export const shiftDay = (key, n) => {
+  const d = new Date(key + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return todayKey(d);
+};
+
+/* Week starts Monday, matching SCHEDULE and the week strip. */
+export const weekStart = key => {
+  const d = new Date(key + 'T00:00:00');
+  return shiftDay(key, -((d.getDay() + 6) % 7));
 };
 
 export const daysBetween = (a, b) =>
@@ -135,6 +150,61 @@ export const clearPhoto = exId => { const p = getPhotos(); delete p[exId]; write
 /* ---- preferences ---- */
 export const getPrefs = () => ({ unit: 'kg', sound: true, vibrate: true, ...read(K.prefs, {}) });
 export const setPrefs = patch => { const p = { ...getPrefs(), ...patch }; write(K.prefs, p); return p; };
+
+/* ---- health components ---------------------------------------
+   Same shape as sessions: one object per date, keyed by item id.
+   { '2026-08-21': { d3:{done:true,v:{}}, wake:{done:true,v:{t:'07:30'}} } }
+   -------------------------------------------------------------- */
+export const getHLog   = () => read(K.hlog, {});
+export const getHDay   = date => getHLog()[date] || {};
+export const getHEntry = (date, id) => getHDay(date)[id] || null;
+
+export const setHEntry = (date, id, entry) => {
+  const all = getHLog();
+  const day = { ...(all[date] || {}) };
+  if (entry === null) delete day[id]; else day[id] = entry;
+  all[date] = day;
+  write(K.hlog, all);
+};
+
+export const toggleH = (date, id) => {
+  const cur = getHEntry(date, id);
+  setHEntry(date, id, cur && cur.done ? null : { done: true, v: (cur && cur.v) || {} });
+};
+
+export const setHField = (date, id, field, val) => {
+  const cur = getHEntry(date, id) || { done: false, v: {} };
+  const v = { ...cur.v };
+  if (val === '') delete v[field]; else v[field] = val;
+  setHEntry(date, id, { ...cur, v });
+};
+
+export const getHOff = () => read(K.hoff, {});
+export const setHOff = (id, on) => { const o = getHOff(); if (on) o[id] = 1; else delete o[id]; write(K.hoff, o); };
+
+/* days within the Monday-start week containing `date` that `id` was done */
+export const weekCount = (date, id) => {
+  const s = weekStart(date);
+  let n = 0;
+  for (let i = 0; i < 7; i++) { const e = getHEntry(shiftDay(s, i), id); if (e && e.done) n++; }
+  return n;
+};
+
+export const doneInLast = (date, id, days) => {
+  let n = 0;
+  for (let i = 0; i < days; i++) { const e = getHEntry(shiftDay(date, -i), id); if (e && e.done) n++; }
+  return n;
+};
+
+/* ---- wearable numbers, one entry per week ---- */
+export const getOura = () => read(K.oura, {});
+export const setOura = (wk, field, val) => {
+  const o = getOura();
+  const b = { ...(o[wk] || {}) };
+  if (val === '') delete b[field]; else b[field] = val;
+  o[wk] = b;
+  write(K.oura, o);
+};
 
 /* ---- backup ---- */
 export const exportAll = () => JSON.stringify(
