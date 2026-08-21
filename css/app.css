@@ -402,3 +402,17 @@ select.picker{width:100%;padding:13px;border-radius:12px;background:var(--card-2
 .volnow .dn{color:var(--warn);font-weight:700}
 .setbtns{display:flex;gap:8px;margin-top:12px}
 .setbtns .btn{flex:1}
+
+/* ---- typed protein entry ---- */
+.ptype{margin-top:12px}
+.ptype label{display:block;font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--tx-3);font-weight:700;margin-bottom:5px}
+.ptype label .u{margin-left:4px;color:var(--tx-3)}
+.ptype input{width:100%;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;
+  padding:12px 12px;font-size:17px;font-weight:700;color:var(--tx);
+  font-variant-numeric:tabular-nums;-webkit-appearance:none}
+.ptype input:focus{outline:none;border-color:var(--fuel);background:#191b21}
+.ptype input::-webkit-outer-spin-button,.ptype input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pbar{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;margin-top:8px}
+.pbar i{display:block;height:100%;background:var(--fuel);border-radius:3px;
+  transition:width .2s;font-style:normal}

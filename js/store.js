@@ -18,7 +18,12 @@ const read  = (k, fallback) => {
   try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : structuredClone(fallback); }
   catch { return structuredClone(fallback); }
 };
-const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn('storage full', e); } };
+/* Returns false if the write did not land, so callers can tell the user
+   instead of silently losing a tick. */
+const write = (k, v) => {
+  try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+  catch (e) { console.warn('storage write failed', e); return false; }
+};
 
 export const todayKey = (d = new Date()) => {
   const t = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -128,8 +133,8 @@ export const getFuel = (date = todayKey()) => {
 export const setFuel = (patch, date = todayKey()) => {
   const all = read(K.fuel, {});
   all[date] = { ...getFuel(date), ...patch };
-  write(K.fuel, all);
-  return all[date];
+  const ok = write(K.fuel, all);
+  return ok ? all[date] : null;
 };
 export const fuelRange = days => {
   const all = read(K.fuel, {});
@@ -164,19 +169,19 @@ export const setHEntry = (date, id, entry) => {
   const day = { ...(all[date] || {}) };
   if (entry === null) delete day[id]; else day[id] = entry;
   all[date] = day;
-  write(K.hlog, all);
+  return write(K.hlog, all);
 };
 
 export const toggleH = (date, id) => {
   const cur = getHEntry(date, id);
-  setHEntry(date, id, cur && cur.done ? null : { done: true, v: (cur && cur.v) || {} });
+  return setHEntry(date, id, cur && cur.done ? null : { done: true, v: (cur && cur.v) || {} });
 };
 
 export const setHField = (date, id, field, val) => {
   const cur = getHEntry(date, id) || { done: false, v: {} };
   const v = { ...cur.v };
   if (val === '') delete v[field]; else v[field] = val;
-  setHEntry(date, id, { ...cur, v });
+  return setHEntry(date, id, { ...cur, v });
 };
 
 export const getHOff = () => read(K.hoff, {});
@@ -203,7 +208,7 @@ export const setOura = (wk, field, val) => {
   const b = { ...(o[wk] || {}) };
   if (val === '') delete b[field]; else b[field] = val;
   o[wk] = b;
-  write(K.oura, o);
+  return write(K.oura, o);
 };
 
 /* ---- backup ---- */

@@ -157,7 +157,7 @@ function domSection(date, dom, inner, countOverride) {
   return `<div class="dom">
     <div class="dom-h"><span class="sw" style="background:${m.c}"></span>
       <h2 style="color:${m.c}">${m.label}</h2>
-      <span class="cnt ${sc.n === sc.t && sc.t ? 'full' : ''}">${sc.n}/${sc.t}</span></div>
+      <span class="cnt ${sc.n === sc.t && sc.t ? 'full' : ''}" data-domcount="${dom}">${sc.n}/${sc.t}</span></div>
     <div class="card">${inner}</div></div>`;
 }
 
@@ -205,8 +205,13 @@ function fuelRows(date) {
       ${d.how ? `<div class="lab">How</div><p>${d.how}</p>` : ''}
       ${d.why ? `<div class="lab">Why it earns a place</div><p>${d.why}</p>` : ''}
       ${d.trap ? `<div class="lab w">Watch out</div><p class="w">${d.trap}</p>` : ''}
-      ${item.counter ? `<div class="pcount" style="margin-top:11px">
-        <button data-p="-25">−</button><b>${f.protein} g</b><button data-p="25">+</button>
+      ${item.counter ? `<div class="ptype">
+        <label>Protein today<span class="u">g</span></label>
+        <input type="number" inputmode="decimal" data-pval value="${f.protein || ''}" placeholder="0">
+        <div class="pbar"><i data-pbar style="width:${Math.min(100,(f.protein/item.goal)*100)}%"></i></div>
+      </div>
+      <div class="pcount" style="margin-top:9px">
+        <button data-p="-25">−</button><button data-p="25">+25</button>
         <button data-p="10" style="width:auto;padding:0 11px;font-size:12.5px;font-weight:700">+10</button>
         <button data-p="reset" style="width:auto;padding:0 11px;font-size:12.5px;font-weight:700;margin-left:auto">Reset</button>
       </div>` : ''}</div>`;
@@ -275,6 +280,49 @@ function workoutScore(date) {
   return { n: fuelDone + (sess?.finishedAt ? 1 : 0), t: FUEL.length + 1 };
 }
 
+
+/* ---- targeted repaint: a tick updates what changed, never the page ---- */
+function repaintHealth(date, id) {
+  const strip = app.querySelector('.dstrip');
+  if (strip) strip.outerHTML = dayStrip(date);
+  app.querySelectorAll('[data-domcount]').forEach(el => {
+    const d = el.dataset.domcount;
+    const sc = d === 'workout' ? workoutScore(date) : H.domainScore(date, d);
+    el.textContent = `${sc.n}/${sc.t}`;
+    el.classList.toggle('full', sc.t > 0 && sc.n === sc.t);
+  });
+  if (!id) return;
+  const item = H.byId(id);
+  const row = app.querySelector(`.hrow[data-hr="${id}"]`);
+  if (!row || !item) return;
+  row.classList.toggle('on', !!S.getHEntry(date, id)?.done);
+  const pips = row.querySelector('.pips');
+  if (pips && item.cad.t === 'w') {
+    const n = S.weekCount(date, id);
+    pips.innerHTML = [...Array(item.cad.n)].map((_, x) => `<i class="${x < n ? 'pf' : ''}"></i>`).join('');
+  }
+}
+
+/* PP fuel rows sit in the Workout band; same treatment. */
+function repaintFuel(date, id) {
+  const f = S.getFuel(date);
+  const item = FUEL.find(x => x.id === id);
+  const row = app.querySelector(`.hrow[data-hr="fuel-${id}"]`);
+  if (row && item) {
+    const on = item.counter ? f.protein >= item.goal : !!f[id];
+    row.classList.toggle('on', on);
+    const tick = row.querySelector('.htick');
+    if (tick) { tick.style.background = on ? 'var(--fuel)' : ''; tick.style.borderColor = on ? 'var(--fuel)' : ''; }
+    const tag = row.querySelector('.htag');
+    if (tag && item.counter) tag.textContent = `${f.protein}/${item.goal} g`;
+  }
+  const pv = app.querySelector('[data-pval]');
+  if (pv && document.activeElement !== pv) pv.value = f.protein || '';
+  const bar = app.querySelector('[data-pbar]');
+  if (bar) bar.style.width = Math.min(100, (f.protein / 130) * 100) + '%';
+  repaintHealth(date, null);
+}
+
 function viewHome() {
   const date = selDate || S.todayKey();
   const dt = new Date(date + 'T00:00:00');
@@ -313,32 +361,56 @@ function viewHome() {
   wireHealth(date);
 }
 
-/* Shared wiring for every view that renders health rows. */
-function wireHealth(date) {
-  app.querySelectorAll('[data-day-sel]').forEach(el => el.addEventListener('click', () => {
-    selDate = el.dataset.daySel; render();
-  }));
-  app.querySelectorAll('[data-ht]').forEach(el => el.addEventListener('click', () => {
-    S.toggleH(date, el.dataset.ht); render();
-  }));
-  app.querySelectorAll('[data-hx]').forEach(el => el.addEventListener('click', () => {
-    app.querySelector(`.hrow[data-hr="${el.dataset.hx}"]`)?.classList.toggle('open');
-  }));
-  app.querySelectorAll('[data-hf]').forEach(el => el.addEventListener('change', () => {
-    S.setHField(date, el.dataset.hf, el.dataset.hk, el.value);
-  }));
-  app.querySelectorAll('[data-fuel]').forEach(el => el.addEventListener('click', () => {
-    const id = el.dataset.fuel; S.setFuel({ [id]: !S.getFuel(date)[id] }, date); render();
-  }));
-  app.querySelectorAll('[data-p]').forEach(el => el.addEventListener('click', () => {
-    const v = el.dataset.p, f = S.getFuel(date);
-    S.setFuel({ protein: v === 'reset' ? 0 : Math.max(0, f.protein + Number(v)) }, date);
-    render();
-  }));
-  app.querySelectorAll('[data-oura]').forEach(el => el.addEventListener('change', () => {
-    S.setOura(S.weekStart(S.todayKey()), el.dataset.oura, el.value);
-  }));
-}
+/* Bound once on #app, so repainting a subtree never loses a handler.
+   A tick saves immediately and repaints only what changed — scroll
+   position, open panels and keyboard focus all survive. */
+const hDate = () => selDate || S.todayKey();
+const saveOk = ok => { if (ok === false || ok === null) toast('Could not save — storage may be full'); };
+
+function wireHealth() { /* delegation is global; kept so call sites stay put */ }
+
+app.addEventListener('click', e => {
+  const day = e.target.closest('[data-day-sel]');
+  if (day) { selDate = day.dataset.daySel; render(); return; }
+
+  const x = e.target.closest('[data-hx]');
+  if (x) { app.querySelector(`.hrow[data-hr="${x.dataset.hx}"]`)?.classList.toggle('open'); return; }
+
+  const t = e.target.closest('[data-ht]');
+  if (t) { const d = hDate(); saveOk(S.toggleH(d, t.dataset.ht)); repaintHealth(d, t.dataset.ht); return; }
+
+  const off = e.target.closest('[data-off]');
+  if (off) { S.setHOff(off.dataset.off, !S.getHOff()[off.dataset.off]); render(); return; }
+
+  /* only the fuel rows rendered as health rows — the standalone #/fuel page keeps its own */
+  const fu = e.target.closest('[data-fuel]');
+  if (fu && fu.closest('.hrow')) {
+    const d = hDate(), id = fu.dataset.fuel;
+    saveOk(S.setFuel({ [id]: !S.getFuel(d)[id] }, d));
+    repaintFuel(d, id); return;
+  }
+  const p = e.target.closest('[data-p]');
+  if (p && p.closest('.hrow')) {
+    const d = hDate(), v = p.dataset.p, f = S.getFuel(d);
+    saveOk(S.setFuel({ protein: v === 'reset' ? 0 : Math.max(0, f.protein + Number(v)) }, d));
+    repaintFuel(d, 'protein'); return;
+  }
+});
+
+app.addEventListener('change', e => {
+  const f = e.target.closest('[data-hf]');
+  if (f) { saveOk(S.setHField(hDate(), f.dataset.hf, f.dataset.hk, f.value)); return; }
+
+  const pv = e.target.closest('[data-pval]');
+  if (pv) {
+    const d = hDate();
+    saveOk(S.setFuel({ protein: pv.value === '' ? 0 : Math.max(0, Number(pv.value)) }, d));
+    repaintFuel(d, 'protein'); return;
+  }
+  const o = e.target.closest('[data-oura]');
+  if (o) saveOk(S.setOura(S.weekStart(S.todayKey()), o.dataset.oura, o.value));
+});
+
 
 function greeting() {
   const h = new Date().getHours();
@@ -860,6 +932,10 @@ function healthLogBlocks() {
         if (dm === 'workout') {
           const sl = SCHEDULE[new Date(dk + 'T00:00:00').getDay()];
           hit = sl.workout && S.getSessions()[S.sessionKey(sl.workout, dk)]?.finishedAt;
+        } else if (dm === 'fuel') {
+          const f = S.getFuel(dk);
+          hit = H.inDomain('fuel').some(i => S.getHEntry(dk, i.id)?.done)
+             || ['creatine','preworkout','gatorade'].some(k => f[k]) || f.protein > 0;
         } else hit = H.inDomain(dm).some(i => S.getHEntry(dk, i.id)?.done);
         return `<i class="${hit ? 'on' : ''}" style="--c:${H.DOMAINS[dm].c}"></i>`;
       }).join('');
@@ -867,6 +943,17 @@ function healthLogBlocks() {
     }
   }
   grid += '</div>';
+
+  const fuelAdh = FUEL.map(item => {
+    const days = 28;
+    let hits = 0;
+    for (let i = 0; i < days; i++) {
+      const f = S.getFuel(S.shiftDay(today, -i));
+      if (item.counter ? f.protein >= item.goal : f[item.id]) hits++;
+    }
+    return { i: { name: `${item.icon} ${item.label}`, dom: 'workout', cad: { t: 'd' } },
+             pc: Math.round(hits / days * 100) };
+  });
 
   const adh = H.live().map(i => {
     const days = i.cad.t === 'd' ? 28 : 56;
@@ -876,7 +963,7 @@ function healthLogBlocks() {
       : i.cad.t === 'f' ? Math.round(days / 14)
       : i.cad.t === 'm' ? Math.round(days / 30) : 1;
     return { i, pc: target ? Math.min(100, Math.round(hits / target * 100)) : 0 };
-  }).sort((a, b) => a.pc - b.pc);
+  }).concat(fuelAdh).sort((a, b) => a.pc - b.pc);
 
   const week = S.fuelRange(7);
   const streak = `<div class="streak">${week.map(d => {
