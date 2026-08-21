@@ -368,12 +368,55 @@ function blockCard(b) {
 }
 
 /* ---------------- day / session view ---------------- */
+
+/* ---------------- progression ----------------
+   Double progression, read straight off the prescription already in data.js:
+   a target of '5-6' means climb to 6 reps at the target RIR, then add weight.
+   ---------------------------------------------- */
+const repRange = t => {
+  const m = String(t).match(/(\d+)\s*-\s*(\d+)/);
+  if (m) return { lo: +m[1], hi: +m[2] };
+  const n = parseInt(t, 10);
+  return { lo: n, hi: n };
+};
+
+/* Smallest jump most gyms can actually make. */
+const STEP = () => unit() === 'kg' ? 2.5 : 5;
+const round2 = n => Math.round(n * 10) / 10;
+const volumeOf = rows => rows.filter(r => r.done && r.w && r.reps)
+  .reduce((a, r) => a + r.w * r.reps, 0);
+
+/* What to aim for this session, given how the last one went. */
+function progressionCue(e, last) {
+  if (!last || !last.sets.length)
+    return { kind: 'new', text: 'First time logged — pick a weight you could stop 2–3 reps short on, and write it down.' };
+
+  const top = Math.max(...e.sets.map(x => repRange(x.target).hi));
+  const rirTarget = Math.min(...e.sets.map(x => x.rir));
+  const w = Math.max(...last.sets.map(s => s.w));
+  const clearedReps = last.sets.every(s => s.reps >= top);
+  const clearedRir  = last.sets.every(s => s.rir == null || s.rir <= rirTarget);
+
+  if (clearedReps && clearedRir) {
+    const next = round2(w + STEP());
+    return { kind: 'up', next,
+      text: `You cleared ${top} reps on every set at ${w} ${unit()}. <b>Go to ${next} ${unit()}</b> and expect reps to drop back to the bottom of the range.` };
+  }
+  if (clearedReps)
+    return { kind: 'hold', next: w,
+      text: `Reps are there at ${w} ${unit()}, but not at ${rirTarget} RIR. <b>Hold ${w}</b> until the last set feels like ${rirTarget} in reserve.` };
+  const worst = Math.min(...last.sets.map(s => s.reps));
+  return { kind: 'hold', next: w,
+    text: `<b>Hold ${w} ${unit()}</b> and chase reps — lowest set was ${worst}, you want ${top} on all of them before the weight moves.` };
+}
+
 function viewDay(dayId) {
   const day = dayById(dayId);
   if (!day) return location.hash = '#/';
   const key = S.sessionKey(day.id);
   const sess = S.ensureSession(day.id, day);
-  const totalSets = day.exercises.reduce((n, e) => n + e.sets.length, 0);
+  const totalSets = day.exercises.reduce((n, e) =>
+    n + Math.max(e.sets.length, (sess.sets[e.ex] || []).length), 0);
   const doneSets = Object.values(sess.sets).flat().filter(s => s.done).length;
 
   const rows = day.exercises.map((e, i) => {
@@ -400,21 +443,41 @@ function viewDay(dayId) {
              <button class="btn sm ghost" style="margin-top:12px" data-addphoto="${e.ex}">Add photo</button></div>`}
         <div class="tags">${ex.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
         <div class="cue">${esc(ex.cue)}</div>
-        ${last ? `<div class="lastline">Last time (${fmtDate(last.date)}): <b>${last.sets.map(s => `${s.w}×${s.reps}`).join(', ')}</b></div>` : ''}
+        ${(() => {
+          const cue = progressionCue(e, last);
+          const volNow = volumeOf(rowSets);
+          const volLast = last ? last.sets.reduce((a, s) => a + s.w * s.reps, 0) : 0;
+          const dv = volLast ? Math.round((volNow - volLast) / volLast * 100) : 0;
+          return `
+          ${last ? `<div class="lastline">Last time · ${fmtDate(last.date)} —
+            <b>${last.sets.map(s => `${s.w}×${s.reps}`).join(', ')}</b>
+            <span class="vol">${Math.round(volLast).toLocaleString()} ${unit()} volume</span></div>` : ''}
+          <div class="cueline ${cue.kind}">${cue.text}</div>
+          <div class="volnow" data-vol="${e.ex}" ${volNow ? '' : 'hidden'}>This session
+            <b>${Math.round(volNow).toLocaleString()} ${unit()}</b>${
+            volLast ? ` <span class="${volNow >= volLast ? 'up' : 'dn'}">${dv >= 0 ? '+' : ''}${dv}% vs last</span>` : ''}</div>`;
+        })()}
         <div class="setgrid">
           <div class="lbl"></div><div class="lbl">${unit()}</div><div class="lbl">reps</div><div class="lbl">RIR</div><div class="lbl"></div>
-          ${e.sets.map((t, si) => {
+          ${[...Array(Math.max(e.sets.length, rowSets.length))].map((_, si) => {
+            const t = e.sets[si] || e.sets[e.sets.length - 1];
             const v = rowSets[si] || {};
-            const ph = last?.sets?.[si];
+            const ph = last?.sets?.[si] ?? last?.sets?.[last.sets.length - 1];
+            const extra = si >= e.sets.length;
             return `<div class="rowgap"></div>
               <div class="setrow ${v.done ? 'done' : ''}" data-set="${si}">
-                <div class="sn">${si + 1}<small>${t.target}</small></div>
+                <div class="sn">${si + 1}<small>${extra ? 'extra' : t.target}</small></div>
                 <input type="number" inputmode="decimal" step="0.5" data-f="w"    value="${v.w ?? ''}"    placeholder="${ph?.w ?? '–'}">
                 <input type="number" inputmode="numeric" data-f="reps" value="${v.reps ?? ''}" placeholder="${t.target}">
                 <input type="number" inputmode="numeric" data-f="rir"  value="${v.rir ?? ''}"  placeholder="${t.rir}">
                 <button class="tick ${v.done ? 'on' : ''}" data-done="${si}">✓</button>
               </div>`;
           }).join('')}
+        </div>
+        <div class="setbtns">
+          <button class="btn sm ghost" data-addset="${e.ex}">+ Add set</button>
+          ${rowSets.length > e.sets.length
+            ? `<button class="btn sm ghost" data-rmset="${e.ex}">− Remove last</button>` : ''}
         </div>
         ${e.supersetInto
           ? `<div class="ss-note">⚡ No rest — straight into ${esc(LIB[e.supersetInto].name)}</div>`
@@ -507,6 +570,25 @@ function wireDay(day, key) {
   });
 
   /* tick a set */
+  app.querySelectorAll('[data-addset]').forEach(btn => btn.addEventListener('click', () => {
+    const ex = btn.dataset.addset, sess = S.getSession(key);
+    sess.sets[ex] = [...(sess.sets[ex] || []), { w: null, reps: null, rir: null, done: false }];
+    S.saveSession(key, sess);
+    const open = [...app.querySelectorAll('.ex.open')].map(el => el.dataset.ex);
+    viewDay(day.id);
+    open.forEach(id => app.querySelector(`.ex[data-ex="${id}"]`)?.classList.add('open'));
+  }));
+  app.querySelectorAll('[data-rmset]').forEach(btn => btn.addEventListener('click', () => {
+    const ex = btn.dataset.rmset, sess = S.getSession(key);
+    const planned = day.exercises.find(x => x.ex === ex).sets.length;
+    if ((sess.sets[ex] || []).length > planned) {
+      sess.sets[ex] = sess.sets[ex].slice(0, -1);
+      S.saveSession(key, sess);
+      const open = [...app.querySelectorAll('.ex.open')].map(el => el.dataset.ex);
+      viewDay(day.id);
+      open.forEach(id => app.querySelector(`.ex[data-ex="${id}"]`)?.classList.add('open'));
+    }
+  }));
   app.querySelectorAll('[data-done]').forEach(btn => btn.addEventListener('click', () => {
     const exEl = btn.closest('.ex');
     const exId = exEl.dataset.ex;
@@ -522,12 +604,13 @@ function wireDay(day, key) {
       /* capture whatever is typed; fall back to the prescription */
       const get = f => { const el = row.querySelector(`[data-f="${f}"]`); return el.value === '' ? null : Number(el.value); };
       cell.w = get('w'); cell.reps = get('reps'); cell.rir = get('rir');
+      /* extra sets beyond the plan inherit the last prescription */
+      const pset = plannedEx.sets[si] || plannedEx.sets[plannedEx.sets.length - 1];
       if (cell.reps == null) {
-        const t = plannedEx.sets[si].target;
-        cell.reps = Number(String(t).split('-').pop());
+        cell.reps = Number(String(pset.target).split('-').pop());
         row.querySelector('[data-f="reps"]').value = cell.reps;
       }
-      if (cell.rir == null) { cell.rir = plannedEx.sets[si].rir; row.querySelector('[data-f="rir"]').value = cell.rir; }
+      if (cell.rir == null) { cell.rir = pset.rir; row.querySelector('[data-f="rir"]').value = cell.rir; }
       cell.ts = Date.now();
     }
     S.saveSession(key, s);
@@ -535,6 +618,7 @@ function wireDay(day, key) {
     btn.classList.toggle('on', cell.done);
     row.classList.toggle('done', cell.done);
     refreshDots(exEl, s.sets[exId]);
+    refreshVolume(exId, key);
     updateProgress(day, key);
 
     if (cell.done) {
@@ -580,6 +664,12 @@ function openExercise(i) {
 
 function advanceAfterSet(day, i, si) {
   const ex = day.exercises[i];
+  /* Sets actually logged can exceed the plan, so count those. */
+  const sess = S.getSession(S.sessionKey(day.id));
+  const setCount = id => {
+    const planned = day.exercises.find(x => x.ex === id)?.sets.length || 0;
+    return Math.max(planned, (sess?.sets?.[id] || []).length);
+  };
 
   /* A-half: straight into the partner, same set number, no rest. */
   if (ex.supersetInto && day.exercises[i + 1]) {
@@ -591,7 +681,7 @@ function advanceAfterSet(day, i, si) {
   /* B-half: take the rest, then head back to the partner for the next round. */
   if (isSupersetPartner(day, i)) {
     const partner = day.exercises[i - 1];
-    const more = si + 1 < partner.sets.length;
+    const more = si + 1 < setCount(partner.ex);
     if (ex.rest > 0) {
       Rest.start(ex.rest, more
         ? `Back to ${LIB[partner.ex].name} · set ${si + 2}`
@@ -602,13 +692,28 @@ function advanceAfterSet(day, i, si) {
   }
 
   /* Ordinary lift. */
-  const isLastSet = si === ex.sets.length - 1;
+  const isLastSet = si === setCount(ex.ex) - 1;
   if (ex.rest > 0) {
     Rest.start(ex.rest, isLastSet
       ? (day.exercises[i + 1] ? 'Next: ' + LIB[day.exercises[i + 1].ex].name : 'Last set — you are done')
       : `${LIB[ex.ex].name} · set ${si + 2}`);
   }
   if (isLastSet && day.exercises[i + 1]) openExercise(i + 1);
+}
+
+/* Volume is the number he actually wants to watch, so it updates as sets land. */
+function refreshVolume(exId, key) {
+  const el = app.querySelector(`[data-vol="${exId}"]`);
+  if (!el) return;
+  const rows = S.getSession(key).sets[exId] || [];
+  const now = volumeOf(rows);
+  if (!now) { el.hidden = true; return; }
+  const last = S.lastPerformance(exId, key);
+  const prev = last ? last.sets.reduce((a, r) => a + r.w * r.reps, 0) : 0;
+  const dv = prev ? Math.round((now - prev) / prev * 100) : 0;
+  el.hidden = false;
+  el.innerHTML = `This session <b>${Math.round(now).toLocaleString()} ${unit()}</b>` +
+    (prev ? ` <span class="${now >= prev ? 'up' : 'dn'}">${dv >= 0 ? '+' : ''}${dv}% vs last</span>` : '');
 }
 
 function refreshDots(exEl, rows) {
@@ -621,7 +726,8 @@ function refreshDots(exEl, rows) {
 }
 function updateProgress(day, key) {
   const s = S.getSession(key);
-  const total = day.exercises.reduce((n, e) => n + e.sets.length, 0);
+  const total = day.exercises.reduce((n, e) =>
+    n + Math.max(e.sets.length, (s.sets[e.ex] || []).length), 0);
   const done = Object.values(s.sets).flat().filter(x => x.done).length;
   const bar = app.querySelector('.bar i'); if (!bar) return;
   bar.style.width = (done / total) * 100 + '%';
