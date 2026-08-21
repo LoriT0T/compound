@@ -53,6 +53,19 @@ export const ITEMS = [
   why:'This is what actually moves VO₂max — among the strongest predictors of all-cause mortality there is. The Zone 2 base is what makes this session productive rather than merely exhausting.',
   fields:[{k:'r', l:'Rounds', t:'number'}, {k:'hr', l:'Peak HR', u:'bpm', t:'number'}] },
 
+
+{ id:'sauna', dom:'move', cad:{t:'w',n:2}, ico:'🧖', name:'Sauna', tag:'2× week',
+  brief:'15–20 min, after training',
+  how:'15–20 minutes at whatever your gym\u2019s sauna runs at, ideally after lifting rather than before — heat before a session blunts performance. Rehydrate after.',
+  why:'One of the very few recovery habits with <b>outcome</b> data rather than biomarker data. In the Kuopio cohort of Finnish men, 4–7 sessions a week was associated with roughly <b>40% lower all-cause mortality</b> and 63% lower sudden cardiac death versus once a week, with a clear dose–response.',
+  trap:'Observational — men who sauna frequently are healthier in ways that are hard to fully adjust for, so treat the size of the effect as uncertain even though the direction is well replicated. It is pleasant, cheap and low-risk, which is why it earns a place despite that.' },
+
+{ id:'bfr', dom:'move', cad:{t:'w',n:1}, ico:'🩹', name:'BFR set', tag:'Optional',
+  brief:'Light load, cuffed — deloads and niggles',
+  how:'Cuff or wrap proximal to the working muscle at a moderate, <b>not painful</b> pressure — roughly 40–50% of arterial occlusion. Light load, ~20–30% of 1RM, high reps (e.g. 30/15/15/15), short rests. Arms and legs only, never the torso.',
+  why:'Meta-analyses find low-load BFR produces <b>hypertrophy comparable to heavy training</b>, with <b>smaller strength gains</b>. That makes it genuinely useful for the specific cases where heavy loading is the problem: a deload week, training around a joint niggle, or adding volume to a lagging muscle without more joint stress.',
+  trap:'It is not a replacement for your heavy work — strength gains are inferior, so the split stays the split. Ignore the enormous growth-hormone percentages attached to BFR online; the hypertrophy finding stands on its own and the hormone spike is not why it works.' },
+
 /* ---------- FUEL & FOOD ---------- */
 { id:'multi', dom:'fuel', cad:{t:'d'}, ico:'💠', when:1, name:'NOW Daily Vits', tag:'1 cap', brief:'Morning, with fat',
   how:'One capsule with a meal containing fat — the A, D, E and K in it are fat-soluble and absorb poorly on an empty stomach.',
