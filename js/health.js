@@ -135,6 +135,12 @@ export const ITEMS = [
   why:'You asked for it directly, so here is the honest version rather than another refusal. Of the botanicals you named it has the most human RCT data: standardised 200 mg raised total testosterone, <b>lowered cortisol</b>, and increased muscle strength at 12 weeks. Effects concentrate in men who are stressed or low to begin with.',
   trap:'The 200:1 product you had is <b>not</b> standardised — an extraction ratio says nothing about eurycomanone content, and cheap unstandardised tongkat has been found contaminated with <b>mercury</b>. If you take it, this is the part that actually matters. Expect little if your testosterone is already normal.' },
 
+
+{ id:'boron', dom:'situ', cad:{t:'d'}, ico:'🪨', name:'Boron', tag:'6 mg', brief:'The one honest experiment',
+  how:'6 mg a day, morning, with food. If you run it, run it as a proper block — one variable, fourteen days, nothing else changed — and read the result on the Review page rather than on how you feel.',
+  why:'Included because it is the only claim from the hormone video that survived scrutiny as genuinely <b>open</b> rather than true or false. A small trial found free testosterone up <b>28.3%</b> after seven days at 6 mg. Cheap, widely available, and no meaningful toxicity at this dose.',
+  trap:'Read the caveat properly: the <b>SHBG mechanism usually credited for it did not reach significance</b> in that trial, and a separate 10 mg four-week study found a non-significant 11.4%. So this is one small positive result and one null. Expect nothing — that is the point of running it as an experiment rather than adding it as a belief.' },
+
 /* ---------- TESTS ---------- */
 { id:'bp', dom:'test', cad:{t:'m'}, ico:'❤️', name:'Blood pressure', tag:'Monthly', brief:'A £25 cuff, 2 min',
   how:'Seated, feet flat, arm at heart height, after five minutes of quiet. Take two readings a minute apart and log the second.',
@@ -250,6 +256,25 @@ export function recommend(date) {
 /* Considered and deliberately not in the stack. Kept visible: a stack is
    defined as much by what you keep out, and the reasoning has to survive. */
 export const OUT = [
+{ n:'Anything sold on a hormone percentage', ico:'📈', v:'The category, not one compound',
+  s:`<p>Keep this one as a filter rather than a verdict on a single product. A claim shaped like <b>"X raises hormone Y by Z%"</b> is a statement about a measurement, not about you.</p>
+  <p>The assumption underneath it — spike an anabolic hormone, grow more muscle — has been tested directly. Train under conditions producing a large post-exercise testosterone, growth hormone and IGF-1 response versus almost none, then measure actual hypertrophy: <b>the spikes are unrelated to muscle protein synthesis or to growth.</b> A 2024 review in <i>Exercise and Sport Sciences Reviews</i> is titled "Hormones, Hypertrophy, and Hype".</p>
+  <p>The reason is arithmetic. Those spikes last around <b>thirty minutes</b>. Muscle protein synthesis stays elevated for a day or more. A half-hour blip does not drive a two-day process — mechanical tension and local signalling do.</p>
+  <p><b>The distinction that matters:</b> a 30-minute spike and a chronically low baseline are not the same currency. Being genuinely deficient in iodine, vitamin D or sleep is a real problem worth fixing. Nudging an already-adequate signal for half an hour is not. Ask what happened to the <i>person</i> — muscle, strength, cognition, mortality — and most of the supplement industry goes quiet.</p>` },
+
+{ n:'Cold plunge after lifting', ico:'🧊', v:'Actively costs you the session',
+  s:`<p>Not a timing quibble — a real penalty. Post-exercise cold water immersion <b>attenuates satellite-cell activity and anabolic signalling for up to two days</b>, and reduces long-term gains in both muscle mass and strength (Roberts 2015, <i>J Physiol</i>). A 2024 meta-analysis, "Throwing cold water on muscle growth", confirms the hypertrophy penalty.</p>
+  <p>Cold exposure is not forbidden — put it on a rest day, or several hours clear of lifting. <b>Heat after training is fine; cold is not.</b> This is the single item from the hormone video that would have cost you something real had you followed it as written.</p>` },
+
+{ n:'Fenugreek', ico:'🌾', v:'Fails on meta-analysis',
+  s:`<p>Sold hard as a natural aromatase blocker that "doubles free testosterone". A 2026 systematic review and meta-analysis of randomised placebo-controlled trials concludes the evidence <b>does not support</b> reliable or clinically meaningful increases in testosterone, and free testosterone shows no stable benefit.</p>
+  <p>Individual trials do report positives, which is exactly why the meta-analysis is the thing to read rather than the trial someone quotes at you.</p>` },
+
+{ n:'Melatonin, nightly', ico:'🌗', v:'A hormone, for a goal that does not exist',
+  s:`<p>Recommended by both the hormone video and the popular sleep stacks, usually to amplify the overnight growth hormone pulse. That endpoint is already disposed of above — the GH pulse is not what builds muscle.</p>
+  <p>What remains is that melatonin is <b>a hormone, not a supplement in the casual sense</b>, and taking one nightly at 25 with a working circadian system is an uncontrolled intervention on the thing you are trying to stabilise. Its genuine use is narrow: jet lag and shifted sleep phase, short-term, at low doses.</p>
+  <p>If sleep onset is the actual problem, Levers 01–04 come first and cost nothing, and L-theanine sits in Situational with better evidence for that specific job.</p>` },
+
 { n:'Nicotine', ico:'🚬', v:'It works. That is not the argument.',
   s:`<p><b>Your experience is real, not placebo.</b> A meta-analysis of 41 double-blind placebo-controlled trials found effect sizes of <b>0.16–0.44</b> for attention and memory — the authors called this "not as subtle as previously thought". A separate transdermal meta-analysis found attention improved significantly (SMD 0.231). Nicotine is genuinely one of the best-evidenced acute cognitive enhancers that exists, via α4β2 and α7 nicotinic receptors. I am not going to pretend otherwise.</p>
   <p><b>The problem is the price, and it is charged in the one currency you cannot afford.</b> Nicotine reduces slow-wave sleep, lengthens sleep latency, fragments sleep and lowers sleep efficiency. Lever 01 sits at the top of this app because sleep is your highest-return input — and nicotine buys you a medium attention effect during the day by degrading exactly that at night. It borrows from tomorrow.</p>
