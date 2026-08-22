@@ -304,3 +304,81 @@ export const OUT = [
 { n:'Iron, unprompted', ico:'🩹', v:'The one active harm risk',
   s:`<p>Adult men have no route to excrete iron and accumulate it across life; free iron is a potent oxidant. Unlike iodine it is properly testable — so measure ferritin, never guess.</p>` },
 ];
+
+/* --------------------------------------------------------------
+   Buy list. Grouped by where you would actually buy them, not by
+   what they do — the note carries the spec we already settled on
+   so the row is self-sufficient in a shop.
+   -------------------------------------------------------------- */
+export const BUY_GROUPS = [
+  { id:'supp',  label:'Supplements',        c:'var(--fuel)' },
+  { id:'skin',  label:'Skin & body',        c:'var(--situ)' },
+  { id:'kit',   label:'Lifestyle & kit',    c:'var(--move)' },
+  { id:'test',  label:'Tests & appointments', c:'var(--test)' },
+  { id:'when',  label:'When needed',        c:'var(--sleep)' },
+];
+
+export const BUY = [
+/* ---- supplements: specs are the ones already in the stack ---- */
+{ id:'b-multi', g:'supp', n:'Daily Vits', note:'NOW Foods, 1 cap. Halal and Kosher certified.',
+  more:'Already the backbone of your Fuel band — iodine 150µg, zinc 10mg, selenium 35µg, B12. It does <b>not</b> cover vitamin D: its D is ergocalciferol at 400 IU, which is the wrong form and too little.' },
+{ id:'b-d3', g:'supp', n:'Vitamin D3', note:'1,000–2,000 IU. Lichen or lanolin.',
+  more:'The one non-negotiable one for Derby at 52.9°N. Lichen-derived is vegan and sidesteps the lanolin question entirely; check the capsule shell too, since softgels are often bovine gelatin. Do not buy 5,000 or 10,000 IU.' },
+{ id:'b-omega', g:'supp', n:'Omega-3', note:'Look for EPA and DHA stated separately.',
+  more:'"1,000 mg fish oil" is not 1,000 mg omega-3 — the EPA + DHA line is often only 300 mg of that. Your MAV bottle gives 1,300 EPA + 860 DHA per <b>three</b> softgels; one softgel is the right daily dose.' },
+{ id:'b-mag', g:'supp', n:'Magnesium glycinate', note:'Glycinate or bisglycinate. Never oxide.',
+  more:'Oxide is poorly absorbed and mostly a laxative. Skip magnesium L-threonate despite the hype — one n=44 trial in adults with cognitive complaints, at roughly three times the price.' },
+{ id:'b-theanine', g:'supp', n:'L-theanine', note:'200 mg.',
+  more:'The only part of the popular sleep stack that survives scrutiny. Pairs with caffeine for study blocks; on its own for nights you cannot switch off.' },
+{ id:'b-fibre', g:'supp', n:'Fibre supplement', note:'Psyllium husk. Food first, though.',
+  more:'You listed this twice — one entry here. Whole food beats the powder, and the 30 g target is easier to hit with oats, beans and lentils than with a scoop. Buy it as the backstop for weeks the food does not happen, and ramp up slowly with water.' },
+
+/* ---- skin ---- */
+{ id:'b-cleanser', g:'skin', n:'Gentle non-foaming cleanser', note:'Twice daily.',
+  more:'The base of everything else. Non-foaming matters because you are about to add benzoyl peroxide and a retinoid, and a stripping cleanser on top of those is how routines get abandoned in week two.' },
+{ id:'b-panoxyl', g:'skin', n:'PanOxyl 10% foaming wash', note:'Benzoyl peroxide. Body and back.',
+  more:'Start every other day — 10% is the strong end and irritation is the usual reason people stop. It bleaches fabric, so use white or old towels and bedding.' },
+{ id:'b-brush', g:'skin', n:'Long-handled brush', note:'For applying the wash to your back.',
+  more:'The unglamorous half of the back-acne routine, and the reason it actually works. Without it the wash never reaches the area that needs it.' },
+{ id:'b-azelaic', g:'skin', n:'Azelaic acid 10%', note:'OTC. Skinoren 20% is prescription.',
+  more:'Well tolerated and works on both spots and post-inflammatory marks. If you end up on adapalene too, alternate nights at first rather than layering both — that is where irritation comes from.' },
+{ id:'b-adapalene', g:'skin', n:'Adapalene 0.1%', note:'Ask the pharmacist before booking the GP.',
+  more:'Worth asking a pharmacist first — some retinoid products are supplied under pharmacist supervision rather than needing a GP appointment. Adapalene is unusually stable alongside benzoyl peroxide, unlike tretinoin, so the two can coexist in a routine. Bring it up at the dermatology appointment you are already booking.' },
+{ id:'b-retinal', g:'skin', n:'Retinaldehyde 0.05–0.1%', note:'OTC route if adapalene is a hassle.',
+  more:'A step up from retinol and a step below prescription strength. A reasonable substitute rather than an addition — pick one retinoid, not both.' },
+{ id:'b-spf', g:'skin', n:'SPF 50, daily', note:'Non-negotiable alongside any retinoid.',
+  more:'Retinoids increase photosensitivity, and sun exposure darkens exactly the post-inflammatory marks you are treating. Skipping this undoes the rest of the routine. Yes, in Derby, in winter.' },
+{ id:'b-ceramide', g:'skin', n:'Ceramide moisturiser', note:'The thing that makes the rest tolerable.',
+  more:'Barrier repair is what lets you stay on actives long enough for them to work. Buy this at the same time as the actives, not after your skin is already angry.' },
+
+/* ---- lifestyle ---- */
+{ id:'b-birk', g:'kit', n:'Birkenstocks', note:'Black or brown.' },
+{ id:'b-watch', g:'kit', n:'Apple Watch', note:'Writes to HealthKit — this app can read it later.',
+  more:'Worth knowing what it is and is not: excellent for resting heart rate, sleep and daily load; <b>not</b> a replacement for a chest strap during hard training, because optical sensors degrade under motion. If you want accurate zone work, it is the Watch plus a Polar H10, not the Watch instead of one.' },
+{ id:'b-charger', g:'kit', n:'Wireless charger', note:'Watch, phone and AirPods in one.' },
+{ id:'b-sacoor', g:'kit', n:'Sacoor clothes', note:'' },
+{ id:'b-lenses', g:'kit', n:'Contact lenses', note:'−1.75 L · −1.25 R. Clear and coloured.',
+  more:'Buy coloured lenses through a registered optician against your prescription, never a novelty or costume seller — poorly made coloured lenses are a genuine corneal infection risk, and the coloured layer sits on a lens that still has to fit your eye properly.' },
+{ id:'b-honey', g:'kit', n:'Raw honey + Chloraseptic Max', note:'Sore throat kit.',
+  more:'Honey has decent evidence for cough and throat symptom relief and is the better first move; the spray is a topical anaesthetic for when it is bad enough to stop you sleeping.' },
+{ id:'b-beconase', g:'kit', n:'Beconase', note:'Nasal steroid. Takes days, not minutes.',
+  more:'Works on a schedule, not on demand — daily use for several days before it does much. Aim the spray outward toward the ear, not at the septum, which is what causes the nosebleeds people blame the drug for.' },
+
+/* ---- tests ---- */
+{ id:'b-bloods', g:'test', n:'Full blood panel', note:'25(OH)D · ferritin + FBC · TSH + free T4 · B12',
+  more:'<b>Stop the multivitamin 72 hours before the draw.</b> Its 300µg of biotin skews immunoassays — TSH reads falsely low and free T4 falsely high, which looks exactly like hyperthyroidism you do not have. Roughly £50–90 privately in the UK, cheaper in Kuwait. This is the item that turns the whole stack from reasoning into arithmetic.' },
+{ id:'b-test-t', g:'test', n:'Testosterone panel', note:'Morning draw. Ask for SHBG too.',
+  more:'Testosterone has a strong daily rhythm — a standard draw is roughly 8–10am, and an afternoon result is not comparable to a reference range built on morning samples. Ask for <b>SHBG</b> alongside total testosterone, otherwise free testosterone cannot be calculated, and free is the number that matters.' },
+{ id:'b-cooper', g:'test', n:'Cooper test', note:'Free. Needs a route, not a purchase.',
+  more:'Twelve minutes, same route, same conditions, monthly. It is already a tracked item in Tests — this row is just the reminder to pick the route once so there is no friction later.' },
+{ id:'b-derm', g:'test', n:'Dermatologist appointment', note:'Bring the list above.',
+  more:'Take the products you already own and the ones you are considering. The two prescription-gated items — Skinoren 20% and adapalene — are exactly what this appointment is for, and a professional read on your skin beats guessing at strengths.' },
+
+/* ---- situational ---- */
+{ id:'b-tongkat', g:'when', n:'Tongkat ali', note:'Physta® or LJ100®, 200 mg. Heavy-metal tested.',
+  more:'If you buy it, buy it properly: standardised to roughly 2% eurycomanone or 22% quassinoids, third-party tested. A "200:1" label is an extraction ratio, not a specification, and cheap unstandardised tongkat has been found mercury-contaminated. Morning, 12-week cycles.' },
+{ id:'b-tyrosine', g:'when', n:'L-tyrosine', note:'For genuine crunch only.',
+  more:'Restores depleted catecholamines under acute stress and short sleep. Rested and unstressed it is inert — buying it does not mean taking it daily.' },
+{ id:'b-gpc', g:'when', n:'Alpha-GPC', note:'300 mg. Pre-exam, never daily.',
+  more:'The stroke association from the Korean cohort is observational and confounded, but it is a real reason to keep this occasional rather than routine. Two eggs feed the same pathway.' },
+];

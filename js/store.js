@@ -11,7 +11,8 @@ const K = {
   history:  'pp:v1:blocks',
   hlog:     'pp:v1:hlog',      /* health: per-day component log   */
   hoff:     'pp:v1:hoff',      /* health: components opted out of */
-  oura:     'pp:v1:oura'       /* health: fortnightly ring numbers */
+  oura:     'pp:v1:oura',      /* health: fortnightly ring numbers */
+  buy:      'pp:v1:buy'        /* buy list: what has been bought      */
 };
 
 const read  = (k, fallback) => {
@@ -199,6 +200,14 @@ export const doneInLast = (date, id, days) => {
   let n = 0;
   for (let i = 0; i < days; i++) { const e = getHEntry(shiftDay(date, -i), id); if (e && e.done) n++; }
   return n;
+};
+
+/* ---- buy list ---- */
+export const getBuy = () => read(K.buy, {});
+export const setBuy = (id, on) => {
+  const b = getBuy();
+  if (on) b[id] = Date.now(); else delete b[id];
+  return write(K.buy, b);
 };
 
 /* ---- wearable numbers, one entry per week ---- */

@@ -379,6 +379,33 @@ app.addEventListener('click', e => {
   const t = e.target.closest('[data-ht]');
   if (t) { const d = hDate(); saveOk(S.toggleH(d, t.dataset.ht)); repaintHealth(d, t.dataset.ht); return; }
 
+  const buy = e.target.closest('[data-buy]');
+  if (buy) {
+    const id = buy.dataset.buy;
+    const on = !S.getBuy()[id];
+    saveOk(S.setBuy(id, on));
+    const row = app.querySelector(`.hrow[data-hr="${id}"]`);
+    row?.classList.toggle('on', on);
+    /* group and header counts */
+    const b2 = S.getBuy();
+    H.BUY_GROUPS.forEach(g => {
+      const items = H.BUY.filter(x => x.g === g.id);
+      const el = [...app.querySelectorAll('.dom')].find(d =>
+        d.querySelector('h2')?.textContent === g.label)?.querySelector('.cnt');
+      if (el) {
+        const n = items.filter(x => b2[x.id]).length;
+        el.textContent = `${n}/${items.length}`;
+        el.classList.toggle('full', n === items.length);
+      }
+    });
+    const done = H.BUY.filter(x => b2[x.id]).length, total = H.BUY.length;
+    const sub = app.querySelector('.top .sub'); if (sub) sub.textContent = `${done} of ${total} bought`;
+    const left = app.querySelector('.card.pad b'); if (left) left.textContent = `${total - done} left`;
+    const bar = app.querySelector('.card.pad .bar i');
+    if (bar) { bar.style.width = (done/total)*100 + '%'; bar.classList.toggle('full', done === total); }
+    return;
+  }
+
   const off = e.target.closest('[data-off]');
   if (off) { S.setHOff(off.dataset.off, !S.getHOff()[off.dataset.off]); render(); return; }
 
@@ -1012,6 +1039,64 @@ function healthLogBlocks() {
     </div>`;
 }
 
+
+/* ---------------- buy list ---------------- */
+function viewBuy() {
+  const bought = S.getBuy();
+  const total = H.BUY.length, done = H.BUY.filter(i => bought[i.id]).length;
+
+  const group = g => {
+    const items = H.BUY.filter(i => i.g === g.id);
+    if (!items.length) return '';
+    const n = items.filter(i => bought[i.id]).length;
+    return `<div class="dom">
+      <div class="dom-h"><span class="sw" style="background:${g.c}"></span>
+        <h2 style="color:${g.c}">${esc(g.label)}</h2>
+        <span class="cnt ${n === items.length ? 'full' : ''}">${n}/${items.length}</span></div>
+      <div class="card">${items.map(i => `
+        <div class="hrow ${bought[i.id] ? 'on' : ''}" data-hr="${i.id}" style="--k:${g.c}">
+          <div class="hrow-h">
+            <button class="htick" data-buy="${i.id}" aria-label="Bought ${esc(i.n)}">${HTICK}</button>
+            <button class="hrow-b" data-hx="${i.id}"><b>${esc(i.n)}</b>
+              ${i.note ? `<span>${esc(i.note)}</span>` : ''}</button>
+            ${i.more ? `<button class="hexp" data-hx="${i.id}">›</button>` : '<span style="width:26px"></span>'}
+          </div>
+          ${i.more ? `<div class="hrow-d"><p style="padding-top:11px">${i.more}</p></div>` : ''}
+        </div>`).join('')}</div>
+    </div>`;
+  };
+
+  app.innerHTML = `<div class="view">
+    <div class="top"><div><h1>Buy list</h1>
+      <div class="sub">${done} of ${total} bought</div></div></div>
+
+    <div class="card pad">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="flex:1">
+          <b style="font-size:15px">${total - done} left</b>
+          <div class="bar"><i class="${done === total ? 'full' : ''}" style="width:${(done/total)*100}%"></i></div>
+        </div>
+        ${done ? '<button class="btn sm ghost" style="width:auto;padding:9px 14px" id="clearBought">Reset</button>' : ''}
+      </div>
+    </div>
+
+    ${H.BUY_GROUPS.map(group).join('')}
+
+    <div class="hnote"><b>Notes carry the spec, not just the name.</b> Where we already settled
+      on a form or a dose — glycinate not oxide, EPA and DHA listed separately, standardised
+      tongkat — the row says so, so you do not have to remember it in the shop. Tap any row
+      with a chevron for the reasoning.</div>
+    <div style="height:16px"></div>
+  </div>`;
+
+  $('#clearBought')?.addEventListener('click', () => {
+    if (confirm('Clear every tick on the buy list?')) {
+      H.BUY.forEach(i => S.setBuy(i.id, false));
+      render();
+    }
+  });
+}
+
 /* ---------------- review: fortnightly, wearable in → changes out ---------------- */
 function viewReview() {
   const today = S.todayKey(), wk = S.weekStart(today);
@@ -1392,7 +1477,8 @@ const ROUTES = [
   { re: /^#\/split$/,       view: viewSplit, nav: 'split' },
   { re: /^#\/log$/,         view: viewLog,   nav: 'log' },
   { re: /^#\/fuel$/,        view: viewFuel,  nav: 'review' },
-  { re: /^#\/review$/,      view: viewReview, nav: 'review' }
+  { re: /^#\/review$/,      view: viewReview, nav: 'review' },
+  { re: /^#\/buy$/,         view: viewBuy,    nav: 'buy' }
 ];
 
 function render() {
