@@ -504,6 +504,18 @@ function viewDay(dayId) {
         <span class="ex-body">
           <b>${esc(ex.name)}</b>
           <span class="pres">${prescription(e)} · ${restLabel(e.rest)}</span>
+          ${(() => {
+            /* the number to beat, visible without opening the exercise */
+            if (!last) return '<span class="lastmini new">First time — record the weight</span>';
+            const cue = progressionCue(e, last);
+            const w = Math.max(...last.sets.map(x => x.w));
+            const vol = Math.round(last.sets.reduce((a, x) => a + x.w * x.reps, 0));
+            const arrow = cue.kind === 'up'
+              ? `<b class="up">→ ${cue.next} ${unit()}</b>`
+              : `<b class="hold">hold ${w} ${unit()}</b>`;
+            return `<span class="lastmini">Last ${last.sets.map(x => `${x.w}×${x.reps}`).join(' ')}
+              · ${vol.toLocaleString()} ${unit()} ${arrow}</span>`;
+          })()}
         </span>
         <span class="ex-dots">${rowSets.map(s => `<i class="${s.done ? 'on' : ''}"></i>`).join('')}</span>
         <span class="chev">›</span>

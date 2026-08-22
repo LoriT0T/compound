@@ -1,5 +1,5 @@
 /* Offline shell. Bump CACHE when assets change. */
-const CACHE = 'pushpull-v2';
+const CACHE = 'compound-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   './js/app.js',
   './js/data.js',
   './js/store.js',
+  './js/health.js',
   './img/ab-wheel.jpg',
   './img/bench-barbell.jpg',
   './img/cable-row-seated.jpg',
@@ -51,21 +52,37 @@ self.addEventListener('activate', e => {
   );
 });
 
-/* Cache-first for assets, network-first for navigation so updates land. */
+/* Code is network-first so a deploy actually reaches the device; images stay
+   cache-first because they never change. Both fall back to cache offline.
+   Cache-first on JS is what previously froze installed copies on an old build. */
+const isCode = url =>
+  url.origin === location.origin && /\.(?:js|css|webmanifest)$/.test(url.pathname);
+
 self.addEventListener('fetch', e => {
   const { request } = e;
   if (request.method !== 'GET') return;
-  if (request.mode === 'navigate') {
+
+  const url = new URL(request.url);
+
+  if (request.mode === 'navigate' || isCode(url)) {
     e.respondWith(
       fetch(request)
-        .then(r => { caches.open(CACHE).then(c => c.put('./index.html', r.clone())); return r; })
-        .catch(() => caches.match('./index.html'))
+        .then(r => {
+          if (r.ok && url.origin === location.origin) {
+            const copy = r.clone();
+            const key = request.mode === 'navigate' ? './index.html' : request;
+            caches.open(CACHE).then(c => c.put(key, copy));
+          }
+          return r;
+        })
+        .catch(() => caches.match(request.mode === 'navigate' ? './index.html' : request))
     );
     return;
   }
+
   e.respondWith(
     caches.match(request).then(hit => hit || fetch(request).then(r => {
-      if (r.ok && new URL(request.url).origin === location.origin) {
+      if (r.ok && url.origin === location.origin) {
         const copy = r.clone();
         caches.open(CACHE).then(c => c.put(request, copy));
       }

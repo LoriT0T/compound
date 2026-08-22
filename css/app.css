@@ -416,3 +416,11 @@ select.picker{width:100%;padding:13px;border-radius:12px;background:var(--card-2
 .pbar{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;margin-top:8px}
 .pbar i{display:block;height:100%;background:var(--fuel);border-radius:3px;
   transition:width .2s;font-style:normal}
+
+/* ---- the number to beat, on the collapsed exercise row ---- */
+.lastmini{display:block;font-size:11.5px;color:var(--tx-3);margin-top:3px;
+  font-variant-numeric:tabular-nums;line-height:1.35}
+.lastmini b{font-weight:700}
+.lastmini b.up{color:var(--ok)}
+.lastmini b.hold{color:var(--warn)}
+.lastmini.new{color:var(--tx-3);font-style:italic}
