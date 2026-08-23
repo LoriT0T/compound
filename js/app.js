@@ -1491,7 +1491,7 @@ function pickPhoto(exId) {
 
 /* ---------------- router ---------------- */
 const ROUTES = [
-  { re: /^#\/$/,            view: viewHome,  nav: 'home' },
+  { re: /^#\/(?:\?.*)?$/,   view: viewHome,  nav: 'home' },
   { re: /^#\/day\/(\w+)$/,  view: m => viewDay(m[1]), nav: 'home' },
   { re: /^#\/split$/,       view: viewSplit, nav: 'split' },
   { re: /^#\/log$/,         view: viewLog,   nav: 'log' },
@@ -1509,6 +1509,19 @@ function render() {
   document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.nav === r.nav));
   if (!/^#\/day\//.test(hash)) { keepAwake(false); }
   window.scrollTo(0, 0);
+  /* Deep link to one row: #/?hx=wake expands and scrolls to that habit. Dīwān links
+     here so a task on the hub lands on the exact row it names, not on the page top. */
+  const q = hash.split('?')[1];
+  const hx = q && new URLSearchParams(q).get('hx');
+  if (hx) {
+    const b = app.querySelector(`[data-hx="${CSS.escape(hx)}"]`);
+    const row = b && b.closest('.hrow');
+    if (row) {
+      row.classList.add('open', 'lit');
+      setTimeout(() => { row.scrollIntoView({ block: 'center' }); }, 60);
+      setTimeout(() => row.classList.remove('lit'), 2600);
+    }
+  }
 }
 
 window.addEventListener('hashchange', render);

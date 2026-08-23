@@ -440,3 +440,7 @@ select.picker{width:100%;padding:13px;border-radius:12px;background:var(--card-2
 .hrow.st-bought{opacity:.55}
 .hrow.st-bought .hrow-b b{text-decoration:line-through}
 .hrow.st-bought .htick{background:var(--k);border-color:var(--k)}
+
+/* A row arrived at from the hub gets a moment of light so the eye finds it. */
+.hrow.lit{animation:lit 2.4s ease}
+@keyframes lit{0%,60%{box-shadow:inset 0 0 0 1.5px var(--acc);border-radius:10px}100%{box-shadow:none}}
