@@ -116,6 +116,7 @@ async function keepAwake(on) {
 /* ---------------- views ---------------- */
 
 /* ================= health components ================= */
+const BASKET = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 5.5h12l-1.2 7.2a1 1 0 01-1 .8H4.2a1 1 0 01-1-.8L2 5.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.4 5.5L7.2 2m3.4 3.5L8.8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 const HTICK = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.2l3 3 6-6.4" stroke="#0b0c0e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function hFields(date, i) {
@@ -379,27 +380,41 @@ app.addEventListener('click', e => {
   const t = e.target.closest('[data-ht]');
   if (t) { const d = hDate(); saveOk(S.toggleH(d, t.dataset.ht)); repaintHealth(d, t.dataset.ht); return; }
 
+  const bask = e.target.closest('[data-bask]');
+  if (bask) {
+    const id = bask.dataset.bask;
+    /* Basket toggles between none and basket. Tapping it on something already bought
+       walks it back a step rather than clearing it outright — the likely intent is
+       "I need another", not "forget this". */
+    const cur = S.buyState(id);
+    saveOk(S.setBuyState(id, cur === 'basket' ? 'none' : 'basket'));
+    render();
+    return;
+  }
+
   const buy = e.target.closest('[data-buy]');
   if (buy) {
     const id = buy.dataset.buy;
-    const on = !S.getBuy()[id];
-    saveOk(S.setBuy(id, on));
+    const on = S.buyState(id) !== 'bought';
+    saveOk(S.setBuyState(id, on ? 'bought' : 'none'));
     const row = app.querySelector(`.hrow[data-hr="${id}"]`);
-    row?.classList.toggle('on', on);
-    /* group and header counts */
-    const b2 = S.getBuy();
+    if (row) row.className = `hrow st-${S.buyState(id)}`;
+    /* group and header counts — bought only. Counting a basket item as bought would
+       make the list look finished while half of it is still on a van. */
     H.BUY_GROUPS.forEach(g => {
       const items = H.BUY.filter(x => x.g === g.id);
       const el = [...app.querySelectorAll('.dom')].find(d =>
         d.querySelector('h2')?.textContent === g.label)?.querySelector('.cnt');
       if (el) {
-        const n = items.filter(x => b2[x.id]).length;
+        const n = items.filter(x => S.buyState(x.id) === 'bought').length;
         el.textContent = `${n}/${items.length}`;
         el.classList.toggle('full', n === items.length);
       }
     });
-    const done = H.BUY.filter(x => b2[x.id]).length, total = H.BUY.length;
-    const sub = app.querySelector('.top .sub'); if (sub) sub.textContent = `${done} of ${total} bought`;
+    const done = H.BUY.filter(x => S.buyState(x.id) === 'bought').length, total = H.BUY.length;
+    const inB = H.BUY.filter(x => S.buyState(x.id) === 'basket').length;
+    const sub = app.querySelector('.top .sub');
+    if (sub) sub.textContent = `${done} of ${total} bought${inB ? ` · ${inB} in the basket` : ''}`;
     const left = app.querySelector('.card.pad b'); if (left) left.textContent = `${total - done} left`;
     const bar = app.querySelector('.card.pad .bar i');
     if (bar) { bar.style.width = (done/total)*100 + '%'; bar.classList.toggle('full', done === total); }
@@ -1042,21 +1057,25 @@ function healthLogBlocks() {
 
 /* ---------------- buy list ---------------- */
 function viewBuy() {
-  const bought = S.getBuy();
-  const total = H.BUY.length, done = H.BUY.filter(i => bought[i.id]).length;
+  const total = H.BUY.length;
+  const done = H.BUY.filter(i => S.buyState(i.id) === 'bought').length;
+  const inBasket = H.BUY.filter(i => S.buyState(i.id) === 'basket').length;
 
   const group = g => {
     const items = H.BUY.filter(i => i.g === g.id);
     if (!items.length) return '';
-    const n = items.filter(i => bought[i.id]).length;
+    const n = items.filter(i => S.buyState(i.id) === 'bought').length;
     return `<div class="dom">
       <div class="dom-h"><span class="sw" style="background:${g.c}"></span>
         <h2 style="color:${g.c}">${esc(g.label)}</h2>
         <span class="cnt ${n === items.length ? 'full' : ''}">${n}/${items.length}</span></div>
       <div class="card">${items.map(i => `
-        <div class="hrow ${bought[i.id] ? 'on' : ''}" data-hr="${i.id}" style="--k:${g.c}">
+        <div class="hrow st-${S.buyState(i.id)}" data-hr="${i.id}" style="--k:${g.c}">
           <div class="hrow-h">
-            <button class="htick" data-buy="${i.id}" aria-label="Bought ${esc(i.n)}">${HTICK}</button>
+            <button class="bask ${S.buyState(i.id) === 'basket' ? 'on' : ''}" data-bask="${i.id}"
+              aria-label="In the basket: ${esc(i.n)}" title="In the basket">${BASKET}</button>
+            <button class="htick" data-buy="${i.id}" aria-label="Bought ${esc(i.n)}"
+              title="Bought">${HTICK}</button>
             <button class="hrow-b" data-hx="${i.id}"><b>${esc(i.n)}</b>
               ${i.note ? `<span>${esc(i.note)}</span>` : ''}</button>
             ${i.more ? `<button class="hexp" data-hx="${i.id}">›</button>` : '<span style="width:26px"></span>'}
@@ -1068,7 +1087,7 @@ function viewBuy() {
 
   app.innerHTML = `<div class="view">
     <div class="top"><div><h1>Buy list</h1>
-      <div class="sub">${done} of ${total} bought</div></div></div>
+      <div class="sub">${done} of ${total} bought${inBasket ? ` · ${inBasket} in the basket` : ''}</div></div></div>
 
     <div class="card pad">
       <div style="display:flex;align-items:center;gap:14px">

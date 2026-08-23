@@ -202,13 +202,40 @@ export const doneInLast = (date, id, days) => {
   return n;
 };
 
-/* ---- buy list ---- */
-export const getBuy = () => read(K.buy, {});
-export const setBuy = (id, on) => {
+/* ---- buy list ----
+   Two states, because a shopping list has two and collapsing them loses the useful one:
+   ordered but not arrived, and actually in the cupboard. A single tick cannot tell you
+   whether the thing is on a van or on a shelf, which is exactly what you want to know
+   when deciding whether to order it again.
+
+   Legacy rows were a bare timestamp meaning "bought". They are migrated on read rather
+   than in a one-off pass, so an old export imported next year still lands correctly. */
+const buyShape = v => (v && typeof v === 'object') ? v : (v ? { bought: v } : null);
+
+export const getBuy = () => {
+  const raw = read(K.buy, {});
+  const out = {};
+  for (const [id, v] of Object.entries(raw)) { const s = buyShape(v); if (s) out[id] = s; }
+  return out;
+};
+
+export const buyState = id => {
+  const r = getBuy()[id];
+  return !r ? 'none' : r.bought ? 'bought' : 'basket';
+};
+
+/** state: 'none' | 'basket' | 'bought'. Setting 'bought' keeps the basket stamp if
+    there was one, so the gap between ordering and arriving stays visible. */
+export const setBuyState = (id, state) => {
   const b = getBuy();
-  if (on) b[id] = Date.now(); else delete b[id];
+  if (state === 'none') delete b[id];
+  else if (state === 'basket') b[id] = { basket: b[id]?.basket || Date.now() };
+  else b[id] = { ...(b[id]?.basket ? { basket: b[id].basket } : {}), bought: Date.now() };
   return write(K.buy, b);
 };
+
+/* Kept so nothing that already calls it breaks. */
+export const setBuy = (id, on) => setBuyState(id, on ? 'bought' : 'none');
 
 /* ---- wearable numbers, one entry per week ---- */
 export const getOura = () => read(K.oura, {});

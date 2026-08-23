@@ -424,3 +424,19 @@ select.picker{width:100%;padding:13px;border-radius:12px;background:var(--card-2
 .lastmini b.up{color:var(--ok)}
 .lastmini b.hold{color:var(--warn)}
 .lastmini.new{color:var(--tx-3);font-style:italic}
+
+/* ── buy list: basket, then bought ──────────────────────
+   Two states because a shopping list has two, and a single tick cannot tell you
+   whether a thing is on a van or on a shelf. */
+.bask{
+  width:26px;height:26px;flex:none;border-radius:50%;
+  border:1.5px solid var(--line-2);background:transparent;color:var(--tx-3);
+  display:grid;place-items:center;cursor:pointer;padding:0;margin-right:-2px;
+}
+.bask:active{transform:scale(.9)}
+.bask.on{border-color:var(--warn);color:var(--warn);background:rgba(214,154,63,.12)}
+.hrow.st-basket{opacity:.9}
+.hrow.st-basket .hrow-b b{color:var(--warn)}
+.hrow.st-bought{opacity:.55}
+.hrow.st-bought .hrow-b b{text-decoration:line-through}
+.hrow.st-bought .htick{background:var(--k);border-color:var(--k)}
