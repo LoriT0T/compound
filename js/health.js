@@ -324,6 +324,8 @@ export const BUY = [
   more:'Already the backbone of your Fuel band — iodine 150µg, zinc 10mg, selenium 35µg, B12. It does <b>not</b> cover vitamin D: its D is ergocalciferol at 400 IU, which is the wrong form and too little.' },
 { id:'b-d3', g:'supp', n:'Vitamin D3', note:'1,000–2,000 IU. Lichen or lanolin.',
   more:'The one non-negotiable one for Derby at 52.9°N. Lichen-derived is vegan and sidesteps the lanolin question entirely; check the capsule shell too, since softgels are often bovine gelatin. Do not buy 5,000 or 10,000 IU.' },
+{ id:'b-brazil', g:'supp', n:'Brazil nuts', note:'One a day is the dose. A bag lasts a month — selenium is food, not a pill.',
+  why:'Activates the thyroid hormone the whole project started with: all three deiodinases converting T4 to T3 are selenoproteins.' },
 { id:'b-omega', g:'supp', n:'Omega-3', note:'Look for EPA and DHA stated separately.',
   more:'"1,000 mg fish oil" is not 1,000 mg omega-3 — the EPA + DHA line is often only 300 mg of that. Your MAV bottle gives 1,300 EPA + 860 DHA per <b>three</b> softgels; one softgel is the right daily dose.' },
 { id:'b-mag', g:'supp', n:'Magnesium glycinate', note:'Glycinate or bisglycinate. Never oxide.',
