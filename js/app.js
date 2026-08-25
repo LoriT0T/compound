@@ -1525,7 +1525,15 @@ function render() {
 }
 
 window.addEventListener('hashchange', render);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && Rest.endsAt) Rest.loop(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (Rest.endsAt) Rest.loop();
+  /* A tab foregrounded after midnight is showing yesterday. Writes were never
+     at risk — hDate() reads the clock at tap time — but the page said the
+     wrong day until something repainted it. Now returning to the tab is the
+     repaint. */
+  render();
+});
 
 $('#restSkip').addEventListener('click', () => Rest.stop());
 $('#restAdd').addEventListener('click', () => Rest.add(30));

@@ -1,5 +1,5 @@
 /* Offline shell. Bump CACHE when assets change. */
-const CACHE = 'compound-v5';
+const CACHE = 'compound-v6';
 const ASSETS = [
   './',
   './index.html',
