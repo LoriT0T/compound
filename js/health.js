@@ -157,7 +157,8 @@ export const ITEMS = [
   why:'Four of the five markers have reliable tests — only iodine genuinely does not, which is exactly why iodine gets solved structurally with a capsule and the rest get solved with a number. This turns the stack from speculation into arithmetic.',
   trap:'<b>Stop the multivitamin 72h before.</b> Its biotin skews immunoassays — TSH reads falsely low, free T4 falsely high, mimicking a hyperthyroidism you do not have.',
   fields:[{k:'d',l:'25(OH)D',u:'nmol/L',t:'number'},{k:'fer',l:'Ferritin',u:'µg/L',t:'number'},
-          {k:'tsh',l:'TSH',u:'mIU/L',t:'number'},{k:'b12',l:'B12',u:'pmol/L',t:'number'}] },
+          {k:'tsh',l:'TSH',u:'mIU/L',t:'number'},{k:'b12',l:'B12',u:'pmol/L',t:'number'},
+          {k:'t',l:'Testosterone',u:'nmol/L',t:'number'},{k:'hba1c',l:'HbA1c',u:'%',t:'number'}] },
 ];
 
 export const byId = id => ITEMS.find(i => i.id === id);
