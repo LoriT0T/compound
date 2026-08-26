@@ -1125,8 +1125,56 @@ function viewReview() {
   const F = [{k:'score',l:'Sleep score',u:'/100'},{k:'hrv',l:'Avg HRV',u:'ms'},
              {k:'rhr',l:'Resting HR',u:'bpm'},{k:'hrs',l:'Time asleep',u:'h'}];
 
+  /* ── the last blood panel, reflected ──
+     Numbers with no feedback are numbers that get filed. Each value is judged
+     against its own bar and the verdict says what to DO, drawn from the
+     2026-08-24 panel analysis: dose, retest window, and what to ignore. */
+  const bloods = (() => {
+    for (let d = 0; d < 366; d++) {
+      const e = S.getHEntry(S.shiftDay(today, -d), 'bloods');
+      if (e && e.done && e.v) return { date: S.shiftDay(today, -d), v: e.v };
+    }
+    return null;
+  })();
+  const bRow = (label, val, unit, tone, say) => val == null ? '' : `
+    <div class="adh" style="--k:${tone === 'ok' ? 'var(--ok)' : tone === 'warn' ? 'var(--warn)' : 'var(--bad)'}">
+      <span class="n" style="min-width:96px">${label}</span>
+      <b style="font-variant-numeric:tabular-nums">${val}${unit}</b>
+      <span style="font-size:11.5px;color:var(--tx-3);line-height:1.45;flex:1;margin-left:10px">${say}</span>
+    </div>`;
+  const panelCard = !bloods ? '' : `
+    <div class="sect"><div class="sect-h"><h2>Last panel</h2>
+      <span style="font-size:11.5px;color:var(--tx-3)">${bloods.date}</span></div>
+      <div class="card">
+        ${bRow('Testosterone', bloods.v.t, ' nmol/L', 'ok',
+          'Drawn at ~5pm, which sits 20–30% under the morning peak — morning-equivalent ≈ 25–28. Upper quartile at 24. Nothing to fix; the boron experiment now has its baseline.')}
+        ${bRow('25(OH)D', bloods.v.d, ' nmol/L', bloods.v.d >= 75 ? 'ok' : 'bad',
+          bloods.v.d >= 75 ? 'Sufficient. Hold the dose.' :
+          'Insufficient (sufficiency starts at 75). Dose moved to 4,000 IU daily — retest in ~3 months, target 75–125.')}
+        ${bRow('Ferritin', bloods.v.fer, ' µg/L', 'ok', 'On target. The floor project is holding.')}
+        ${bRow('TSH', bloods.v.tsh, ' mIU/L', 'ok', 'Mid-range, with FT4 and FT3 mid-range on the full panel. Thyroid is quiet.')}
+        ${bRow('B12', bloods.v.b12, ' pmol/L', 'ok', 'Upper-mid. Nothing to do.')}
+        ${bRow('HbA1c', bloods.v.hba1c, '%', bloods.v.hba1c >= 5.7 ? 'bad' : bloods.v.hba1c >= 5.5 ? 'warn' : 'ok',
+          bloods.v.hba1c >= 5.7 ? 'Prediabetic range — escalate.' :
+          bloods.v.hba1c >= 5.5 ? 'Normal, at the ceiling. The fibre, Zone 2 and protein levers are exactly the fix — recheck yearly, expect drift DOWN.' :
+          'Comfortable.')}
+        <div class="adh" style="--k:var(--warn)">
+          <span class="n" style="min-width:96px">Copper</span><b>65 µg/dL</b>
+          <span style="font-size:11.5px;color:var(--tx-3);line-height:1.45;flex:1;margin-left:10px">
+          Below range with zinc near its ceiling — the classic zinc-suppresses-copper pattern from
+          the daily multi. Copper is on the Buy list; retest both in ~10 weeks.</span></div>
+        <div class="adh" style="--k:var(--ok)">
+          <span class="n" style="min-width:96px">AST 75 · ALT 20</span><b>muscle</b>
+          <span style="font-size:11.5px;color:var(--tx-3);line-height:1.45;flex:1;margin-left:10px">
+          AST high with ALT serene is training, not liver — AST lives in skeletal muscle. For a
+          clean number ever, draw after 5+ days without lifting. Creatinine at top of range is the
+          creatine + muscle mass signature; urea normal.</span></div>
+      </div>
+    </div>`;
+
   app.innerHTML = `<div class="view">
     <div class="top"><div><h1>Review</h1><div class="sub">Fortnightly — data in, changes out</div></div></div>
+    ${panelCard}
 
     <div class="card pad">
       <div style="font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-3);

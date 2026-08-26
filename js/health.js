@@ -72,8 +72,8 @@ export const ITEMS = [
   why:'Closes several floors at once at sane doses: <b>iodine 150µg</b> (exactly the RDA, and what fixes the UK gap since Britain never adopted salt iodisation), <b>zinc 10mg</b>, <b>selenium 35µg</b>, <b>B12 18µg</b>. Replaces separate zinc and iodine bottles.',
   trap:'Its vitamin D is ergocalciferol (D2) at 400 IU — wrong form, too little, so it does <b>not</b> replace D3. It also carries 300µg biotin: stop 72h before any blood draw or your TSH reads falsely low.' },
 
-{ id:'d3', dom:'fuel', cad:{t:'d'}, ico:'☀️', when:1, name:'Vitamin D3', tag:'1000–2000 IU', brief:'Same meal as the multi',
-  how:'With the same fatty meal. Year-round, not just winter.',
+{ id:'d3', dom:'fuel', cad:{t:'d'}, ico:'☀️', when:1, name:'Vitamin D3', tag:'4,000 IU', brief:'Same meal as the multi — dose raised by the 24 Aug panel',
+  how:'4,000 IU with the same fatty meal, year-round. Raised from 1–2,000 on evidence: the 2026-08-24 panel read 55.4 nmol/L — insufficient even under Kuwait sun, which is the indoor-life pattern. Retest in ~3 months; target 75–125, then hold or trim.',
   why:'The one clearly non-negotiable supplement here. Derby is 52.9°N — above 50°N there is <b>zero cutaneous synthesis from October to late March</b> for any skin type. Melanin filters UV, so darker skin needs several times the exposure for the same output.',
   trap:'Do not go to 5,000 or 10,000 IU. The upper limit is 4,000 and you are correcting a floor, not chasing a number.' },
 
@@ -147,9 +147,10 @@ export const ITEMS = [
   why:'One of the strongest modifiable predictors of long-run outcomes there is, and almost nobody establishes a baseline in their twenties — which is exactly when a trend becomes informative. It is also the cheapest number on this page to collect.',
   fields:[{k:'sys', l:'Systolic', u:'mmHg', t:'number'}, {k:'dia', l:'Diastolic', u:'mmHg', t:'number'}] },
 
-{ id:'cooper', dom:'test', cad:{t:'m'}, ico:'🏃', name:'Cooper test', tag:'Monthly', brief:'12 min — VO₂max proxy',
-  how:'How far you cover in 12 minutes. Same route, same conditions, once a month.',
-  why:'Measures the outcome directly instead of estimating it from heart rate. Free, and better evidence of aerobic progress than any wearable’s estimate.',
+{ id:'cooper', dom:'test', cad:{t:'m'}, ico:'🏃', name:'Cooper test', tag:'Monthly', brief:'12 min all-out — flat course, even pace, log metres',
+  how:'<b>The protocol:</b> warm up 10 minutes easy with two or three 20-second pick-ups. Then 12:00 on the clock, cover as much ground as you can — running throughout if possible, walking only when you must. Flat, measured course: a 400m track is ideal, a GPS watch on a straight road works. <b>Pacing is the whole test</b>: go out at a pace you could hold for 15 minutes, not 5 — the classic failure is a fast first 3 minutes and a crawl after. Aim even splits or a slight negative. Stop dead at 12:00 and record total metres. <b>Kuwait in August:</b> do it after Isha or on a treadmill at 1% incline — a midday attempt measures the heat, not you.',
+  why:'Measures the outcome directly instead of estimating it from heart rate. VO₂max ≈ (metres − 504.9) ÷ 44.73. For a man in his twenties: 2,800m+ is excellent (≈51+), 2,400–2,800 good, 2,200–2,400 fair, under 2,200 is the signal the aerobic base needs the Zone 2 hours. Same route, same conditions every month — the trend is the datum, the single number is not.',
+  trap:'Racing the first lap. Even pacing adds 100–200m to the honest result; a blow-up subtracts more. And heat: 40°C fabricates a bad score — evening or treadmill.',
   fields:[{k:'d', l:'Distance', u:'m', t:'number'}] },
 
 { id:'bloods', dom:'test', cad:{t:'q'}, ico:'🩸', name:'Blood panel', tag:'Quarterly', brief:'25(OH)D · ferritin · TSH · B12',
@@ -325,6 +326,8 @@ export const BUY = [
   more:'Already the backbone of your Fuel band — iodine 150µg, zinc 10mg, selenium 35µg, B12. It does <b>not</b> cover vitamin D: its D is ergocalciferol at 400 IU, which is the wrong form and too little.' },
 { id:'b-d3', g:'supp', n:'Vitamin D3', note:'1,000–2,000 IU. Lichen or lanolin.',
   more:'The one non-negotiable one for Derby at 52.9°N. Lichen-derived is vegan and sidesteps the lanolin question entirely; check the capsule shell too, since softgels are often bovine gelatin. Do not buy 5,000 or 10,000 IU.' },
+{ id:'b-copper', g:'supp', n:'Copper 1–2 mg', note:'The 24 Aug panel: copper below range, zinc at its ceiling — the multi’s zinc suppresses copper uptake. Skip it only if a new multi lists ≥0.9 mg copper.',
+  why:'Liver was the food route and it is off the table; a small copper supplement is the honest replacement. Retest copper + zinc in ~10 weeks.' },
 { id:'b-brazil', g:'supp', n:'Brazil nuts', note:'One a day is the dose. A bag lasts a month — selenium is food, not a pill.',
   why:'Activates the thyroid hormone the whole project started with: all three deiodinases converting T4 to T3 are selenoproteins.' },
 { id:'b-omega', g:'supp', n:'Omega-3', note:'Look for EPA and DHA stated separately.',
